@@ -119,6 +119,10 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "genome.fa.ok"));
     
     my $star_index = "genome.fa.star.idx";
+    unless (-d $star_index) {
+        mkdir $star_index or die "Error, cannot mkdir $star_index";
+    }
+    
     $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index "
             . " --twopassMode Basic "
             . " --genomeFastaFiles genome.fa "

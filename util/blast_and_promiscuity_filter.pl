@@ -29,11 +29,10 @@ my $usage = <<__EOUSAGE__;
 #
 #  --out_prefix <string>          prefix for output filename (will tack on .final and .final.abridged)
 #
+#  --genome_lib_dir <string>      genome lib directory
+#
 # Optional: 
-#
-#  --ref_cdna <string>            reference cDNA sequences fasta file (generated specially based on gtf -see docs) 
-#                                 (default: $cdna_fasta_file)
-#
+##
 #  -E <float>                     E-value threshold for blast searches (default: $Evalue)
 #
 #  --tmpdir <string>              file for temporary files (default: $tmpdir)
@@ -52,11 +51,11 @@ my $help_flag;
 
 my $fusion_preds_file;
 my $out_prefix;
+my $genome_lib_dir;
 
 &GetOptions ( 'h' => \$help_flag, 
               
               'fusion_preds=s' => \$fusion_preds_file,
-              'ref_cdna=s' => \$cdna_fasta_file,
               
               'out_prefix=s' => \$out_prefix,
 
@@ -64,7 +63,9 @@ my $out_prefix;
               'tmpdir=s' => \$tmpdir,
               
               'max_promiscuity=i' => \$MAX_PROMISCUITY,
-                            
+                   
+              'genome_lib_dir=s' => \$genome_lib_dir,
+              
               
     );
 
@@ -77,11 +78,13 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($fusion_preds_file && $cdna_fasta_file && $out_prefix) {
+unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
     die $usage;
 }
 
-my $ref_cdna_idx_file = "$cdna_fasta_file.idx";
+
+my $ref_cdna = "$genome_lib_dir/ref_cdna.fasta.gz";
+my $ref_cdna_idx_file = "$ref_cdna.idx";
 unless (-s $ref_cdna_idx_file) {
     die "Error, cannot find indexed fasta file: $cdna_fasta_file.idx; be sure to build an index - see docs.\n";
 }
@@ -95,7 +98,7 @@ if (-s $blast_pairs_idx_file) {
     $BLAST_PAIRS_IDX = new TiedHash( { use => $blast_pairs_idx_file } );
 }
 else {
-    print STDERR "Warning: cannot locate $blast_pairs_idx_file, running blastn directly.\n";
+    die "Error: cannot locate $blast_pairs_idx_file";
 }
 
 my %BLAST_CACHE;
@@ -268,81 +271,18 @@ sub examine_seq_similarity {
     my @blast_hits;
     
 
-    if ($BLAST_PAIRS_IDX) {
-        # use pre-computed blast pair data
-        if (my $hit = $BLAST_PAIRS_IDX->get_value("$geneA--$geneB")) {
-            return($hit);
-        }
-        elsif ($hit = $BLAST_PAIRS_IDX->get_value("$geneB--$geneA")) {
-            return($hit);
-        }
-        else {
-            return();
-        }
-    }
-    
-    # check for previously stored blast results or attempted search
-    if (my $cache_aref = $BLAST_CACHE{"$geneA--$geneB"}) {
-        my @hits = @$cache_aref;
-        if (@hits) {
-            #print STDERR "CACHED HITS FOR: $geneA--$geneB: [@hits]\n";
-            return(@hits);
-        }
-        else {
-            return();
-        }
-    }
-    
 
-    #print STDERR "-testing $geneA vs. $geneB\n";
-    
-    my $fileA = "$tmpdir/$$.gA.fa";
-    my $fileB = "$tmpdir/$$.gB.fa";
-        
-    {
-        # write file A
-        open (my $ofh, ">$fileA") or die "Error, cannot write to $fileA";
-        my $cdna_seqs = $CDNA_IDX->get_value($geneA) or confess "Error, no sequences found for gene: $geneA";
-        print $ofh $cdna_seqs;
-        close $ofh;
+    # use pre-computed blast pair data
+    if (my $hit = $BLAST_PAIRS_IDX->get_value("$geneA--$geneB")) {
+        return($hit);
     }
-        
-    
-    {
-        # write file B
-        open (my $ofh, ">$fileB") or die "Error, cannot write to file $fileB";
-        my $cdna_seqs = $CDNA_IDX->get_value($geneB) or confess "Error, no sequences found for gene: $geneB";
-        print $ofh $cdna_seqs;
-        close $ofh;
+    elsif ($hit = $BLAST_PAIRS_IDX->get_value("$geneB--$geneA")) {
+        return($hit);
     }
-    
-    #print STDERR "do it? ... ";
-    #my $response = <STDIN>;
-    
-    ## blast them:
-    my $cmd = "makeblastdb -in $fileB -dbtype nucl 2>/dev/null 1>&2";
-    &process_cmd($cmd);
-    
-    my $blast_out = "$tmpdir/$$.blastn";
-    $cmd = "blastn -db $fileB -query $fileA -evalue $Evalue -outfmt 6 -lcase_masking -max_target_seqs 1 -word_size 11 > $blast_out 2>/dev/null";
-    &process_cmd($cmd);
-    
-    if (-s $blast_out) {
-        open (my $fh, $blast_out) or die "Error, cannot open file $blast_out";
-        while (<$fh>) {
-            chomp;
-            my @x = split(/\t/);
-            my $blast_line = join("^", @x);
-            $blast_line =~ s/\s+//g;
-            push (@blast_hits, $blast_line);
-        }
+    else {
+        return();
     }
-    
-    $BLAST_CACHE{"$geneA--$geneB"} = [@blast_hits];
-
-    return(@blast_hits);
 }
-
 
 
 ####

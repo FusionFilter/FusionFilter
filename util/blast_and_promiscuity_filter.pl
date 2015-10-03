@@ -9,7 +9,6 @@ use Fasta_reader;
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
 use TiedHash;
 
-my $cdna_fasta_file = "$FindBin::Bin/../resources/gencode.v19.annotation.gtf.exons.cdna.gz";
 
 my $Evalue = 1e-3;
 my $tmpdir = "/tmp";
@@ -83,17 +82,8 @@ unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
 }
 
 
-my $ref_cdna = "$genome_lib_dir/ref_cdna.fasta.gz";
-my $ref_cdna_idx_file = "$ref_cdna.idx";
-unless (-s $ref_cdna_idx_file) {
-    die "Error, cannot find indexed fasta file: $cdna_fasta_file.idx; be sure to build an index - see docs.\n";
-}
-
-
-my $CDNA_IDX = new TiedHash({ use => $ref_cdna_idx_file });
-
 my $BLAST_PAIRS_IDX;
-my $blast_pairs_idx_file = "$cdna_fasta_file.blastn_gene_pairs.gz.idx";
+my $blast_pairs_idx_file = "$genome_lib_dir/blastn_gene_pairs.gz.idx";
 if (-s $blast_pairs_idx_file) {
     $BLAST_PAIRS_IDX = new TiedHash( { use => $blast_pairs_idx_file } );
 }

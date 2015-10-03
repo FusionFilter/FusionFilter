@@ -8,13 +8,14 @@ use TiedHash;
 use Carp;
 
 
-my $usage = "\n\n\tusage: $0 blastn.gene_pairs.gz\n\n";
+my $usage = "\n\n\tusage: $0 blastn.gene_pairs.gz output_index_filename\n\n";
 
 my $blast_pairs = $ARGV[0] or die $usage;
+my $output_index_filename = $ARGV[1] or die $usage;
 
 main: {
 
-    my $idx = new TiedHash( { create => "$blast_pairs.idx" } );
+    my $idx = new TiedHash( { create => $output_index_filename } );
     
     open (my $fh, "gunzip -c $blast_pairs | ") or die "Error, cannot read $blast_pairs  ";
     while (<$fh>) {

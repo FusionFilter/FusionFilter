@@ -148,6 +148,11 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.idx.ok"));
 
     
+    # build the bowtie index:
+    $cmd = "bowtie-build ref_cdna.fasta ref_cdna.fasta";
+    $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.bowtie_idx.ok"));
+    
+    
     #######################
     # index the blast pairs
     

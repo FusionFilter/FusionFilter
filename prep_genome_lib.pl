@@ -122,8 +122,12 @@ main: {
         mkpath($output_dir) or die "Error, cannot mkpath $output_dir";
     }
     
-    my $cmd = "ln -s $genome_fa_file $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
+    my $cmd;
+    
+    unless (-e "$output_dir/ref_genome.fa") {
+        $cmd = "ln -s $genome_fa_file $output_dir/ref_genome.fa";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
+    }
 
     # build star index
     my $star_index = "$output_dir/ref_genome.fa.star.idx";
@@ -149,9 +153,12 @@ main: {
     ##########################
     # Prep the cdna fasta file
     
-    $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));
-
+    unless (-e "$output_dir/ref_cdna.fasta") {
+        $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));
+    }
+    
+    
     # index the fasta file
     $cmd = "$UTILDIR/index_cdna_seqs.pl $output_dir/ref_cdna.fasta";
     $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.idx.ok"));
@@ -171,10 +178,11 @@ main: {
     ###############################
     ## symlink the annotation file
     
-    $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
+    unless (-e "$output_dir/ref_annot.gtf") {
+        $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
+        $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
+    }
     
-
     if ($FusionInspectorPrep) {
         my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $output_dir/ref_genome.fa";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.count.ok"));

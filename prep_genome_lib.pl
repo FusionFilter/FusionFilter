@@ -7,7 +7,7 @@ use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);
 use FindBin;
 use lib ("$FindBin::Bin/lib");
 use Pipeliner;
-
+use Cwd;
 
 my $CPU = 4;
 
@@ -93,6 +93,9 @@ if ($output_dir) {
     }
     chdir $output_dir or die "Error, cannot cd to $output_dir";
 }
+else {
+    $output_dir = cwd();
+}
 
 my @tools_required = qw(STAR gmap_build bowtie-build);
 my $missing_tool_flag = 0;
@@ -115,7 +118,7 @@ main: {
     # Prep the genome
 
     # build star index
-    my $cmd = "ln -s $genome_fa_file ref_genome.fa";
+    my $cmd = "ln -s $genome_fa_file $ouptput_dir/ref_genome.fa";
     $pipeliner->add_commands(new Command($cmd, "ref_genome.fa.ok"));
     
     my $star_index = "ref_genome.fa.star.idx";
@@ -140,7 +143,7 @@ main: {
     ##########################
     # Prep the cdna fasta file
     
-    $cmd = "ln -s $cdna_fa_file ref_cdna.fasta";
+    $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
     $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.ok"));
 
     # index the fasta file
@@ -158,6 +161,14 @@ main: {
     
     $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file blast_pairs.idx";
     $pipeliner->add_commands(new Command($cmd, "blast_pairs.idx.ok"));
+
+    ###############################
+    ## symlink the annotation file
+    
+    $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
+    
+
 
 
     $pipeliner->run();

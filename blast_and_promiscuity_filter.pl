@@ -83,7 +83,7 @@ unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
 
 
 my $BLAST_PAIRS_IDX;
-my $blast_pairs_idx_file = "$genome_lib_dir/blastn_gene_pairs.gz.idx";
+my $blast_pairs_idx_file = "$genome_lib_dir/blast_pairs.idx";
 if (-s $blast_pairs_idx_file) {
     $BLAST_PAIRS_IDX = new TiedHash( { use => $blast_pairs_idx_file } );
 }

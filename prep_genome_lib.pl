@@ -78,7 +78,7 @@ my $count_kmers;
               'CPU=i' => \$CPU,
     
               # required for FusionInspector
-              'count_kmers' => \$count_kmersPrep,
+              'count_kmers' => \$count_kmers,
     );
 
 

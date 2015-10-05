@@ -36,6 +36,9 @@ my $usage = <<__EOUSAGE__;
 #
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
+#  --FusionInspector               flag to include additional build steps required by FusionInspector
+#                                  (requires 'jellyfish' software exist in your PATH setting)
+#
 ##################################################################################
 
 
@@ -51,6 +54,7 @@ my $cdna_fa_file;
 my $gtf_file;
 my $blast_pairs_file;
 my $output_dir;
+my $FusionInspectorPrep;
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -63,6 +67,8 @@ my $output_dir;
               # optional
               'output_dir=s' => \$output_dir,
               'CPU=i' => \$CPU,
+    
+              'FusionInspector' => \$FusionInspectorPrep,
     );
 
 
@@ -119,9 +125,9 @@ main: {
 
     # build star index
     my $cmd = "ln -s $genome_fa_file $ouptput_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "ref_genome.fa.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
     
-    my $star_index = "ref_genome.fa.star.idx";
+    my $star_index = "$output_dir/ref_genome.fa.star.idx";
     unless (-d $star_index) {
         mkdir $star_index or die "Error, cannot mkdir $star_index";
     }
@@ -136,31 +142,31 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
 
     # build GMAP index
-    $cmd = "gmap_build -D . -d ref_genome.fa.gmap -T . -k 13 ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "ref_genome.fa.gmap.ok"));
+    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -T . -k 13 ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
 
 
     ##########################
     # Prep the cdna fasta file
     
     $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
-    $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));
 
     # index the fasta file
-    $cmd = "$UTILDIR/index_cdna_seqs.pl ref_cdna.fasta";
-    $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.idx.ok"));
+    $cmd = "$UTILDIR/index_cdna_seqs.pl $output_dir/ref_cdna.fasta";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.idx.ok"));
 
     
     # build the bowtie index:
-    $cmd = "bowtie-build ref_cdna.fasta ref_cdna.fasta";
-    $pipeliner->add_commands(new Command($cmd, "ref_cdna.fasta.bowtie_idx.ok"));
+    $cmd = "bowtie-build $output_dir/ref_cdna.fasta $output_dir/ref_cdna.fasta";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.bowtie_idx.ok"));
     
     
     #######################
     # index the blast pairs
     
-    $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file blast_pairs.idx";
-    $pipeliner->add_commands(new Command($cmd, "blast_pairs.idx.ok"));
+    $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_blast_pairs.idx.ok"));
 
     ###############################
     ## symlink the annotation file
@@ -169,8 +175,18 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
     
 
+    if ($FUSION_INSPECTOR_PREP) {
+        my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $out_dir/ref_genome.fa";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.count.ok"));
 
+        $cmd = "jellyfish dump -L 2 mer_counts.jf > $output_dir/ref_genome.jf.min2.kmers";
+        $pipeliner->add_commands(new Command($cmd, "$ouptput_dir/_jf.dump.ok"));
 
+        $cmd = "rm mer_counts.jf";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.cleanup.ok"));
+        
+    }
+    
     $pipeliner->run();
 
     exit(0);

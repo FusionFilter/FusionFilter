@@ -115,10 +115,10 @@ main: {
     # Prep the genome
 
     # build star index
-    my $cmd = "ln -s $genome_fa_file genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "genome.fa.ok"));
+    my $cmd = "ln -s $genome_fa_file ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "ref_genome.fa.ok"));
     
-    my $star_index = "genome.fa.star.idx";
+    my $star_index = "ref_genome.fa.star.idx";
     unless (-d $star_index) {
         mkdir $star_index or die "Error, cannot mkdir $star_index";
     }
@@ -133,8 +133,8 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
 
     # build GMAP index
-    $cmd = "gmap_build -D . -d genome.fa.gmap -T . -k 13 genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "genome.fa.gmap.ok"));
+    $cmd = "gmap_build -D . -d ref_genome.fa.gmap -T . -k 13 ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "ref_genome.fa.gmap.ok"));
 
 
     ##########################

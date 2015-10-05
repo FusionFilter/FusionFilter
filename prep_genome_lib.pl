@@ -154,11 +154,6 @@ main: {
     
     $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
 
-    # build GMAP index
-    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
-
-
     ###############################
     ## symlink the annotation file
     
@@ -191,6 +186,12 @@ main: {
         # build the bowtie index:
         $cmd = "bowtie-build $output_dir/ref_cdna.fasta $output_dir/ref_cdna.fasta";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.bowtie_idx.ok"));
+        
+        
+        # build GMAP genome index
+        $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
+        
     }
             
     if ($count_kmers) {

@@ -30,7 +30,7 @@ main: {
                 
     }
     
-    print STDERR "-done creating index file: $blast_pairs.idx\n\n";
+    print STDERR "-done creating index file: $output_index_filename\n\n";
 
     exit(0);
     

@@ -8,6 +8,7 @@ use FindBin;
 use lib ("$FindBin::Bin/lib");
 use Pipeliner;
 use Cwd;
+use File::Path;
 
 my $CPU = 4;
 
@@ -89,17 +90,11 @@ $genome_fa_file = &Pipeliner::ensure_full_path($genome_fa_file);
 $cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file);
 $gtf_file = &Pipeliner::ensure_full_path($gtf_file);
 $blast_pairs_file = &Pipeliner::ensure_full_path($blast_pairs_file);
-
+$output_dir = &Pipeliner::ensure_full_path($output_dir);
 
 my $UTILDIR = $FindBin::Bin . "/util";
 
-if ($output_dir) {
-    unless (-d $output_dir) {
-        mkdir $output_dir or die "Error, cannot mkdir $output_dir";
-    }
-    chdir $output_dir or die "Error, cannot cd to $output_dir";
-}
-else {
+unless ($output_dir) {
     $output_dir = cwd();
 }
 
@@ -123,18 +118,23 @@ main: {
     #################
     # Prep the genome
 
-    # build star index
-    my $cmd = "ln -s $genome_fa_file $ouptput_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
+    unless (-d $output_dir) {
+        mkpath($output_dir) or die "Error, cannot mkpath $output_dir";
+    }
     
+    my $cmd = "ln -s $genome_fa_file $output_dir/ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
+
+    # build star index
     my $star_index = "$output_dir/ref_genome.fa.star.idx";
     unless (-d $star_index) {
-        mkdir $star_index or die "Error, cannot mkdir $star_index";
+        mkpath $star_index or die "Error, cannot mkdir $star_index";
     }
+
     
     $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index "
             . " --twopassMode Basic "
-            . " --genomeFastaFiles genome.fa "
+            . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
             . " --sjdbGTFfile $gtf_file "
             . " --sjdbOverhang 100 ";
@@ -142,7 +142,7 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
 
     # build GMAP index
-    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -T . -k 13 ref_genome.fa";
+    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
     $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
 
 
@@ -175,12 +175,12 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
     
 
-    if ($FUSION_INSPECTOR_PREP) {
-        my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $out_dir/ref_genome.fa";
+    if ($FusionInspectorPrep) {
+        my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $output_dir/ref_genome.fa";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.count.ok"));
 
         $cmd = "jellyfish dump -L 2 mer_counts.jf > $output_dir/ref_genome.jf.min2.kmers";
-        $pipeliner->add_commands(new Command($cmd, "$ouptput_dir/_jf.dump.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.dump.ok"));
 
         $cmd = "rm mer_counts.jf";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.cleanup.ok"));

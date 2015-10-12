@@ -95,11 +95,11 @@ unless ($blast_pairs_file =~ /\.gz$/) {
 }
 
 
-$genome_fa_file = &Pipeliner::ensure_full_path($genome_fa_file);
-$cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file);
-$gtf_file = &Pipeliner::ensure_full_path($gtf_file);
-$blast_pairs_file = &Pipeliner::ensure_full_path($blast_pairs_file);
-$output_dir = &Pipeliner::ensure_full_path($output_dir);
+$genome_fa_file = &Pipeliner::ensure_full_path($genome_fa_file) if $genome_fa_file;
+$cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file) if $cdna_fa_file;
+$gtf_file = &Pipeliner::ensure_full_path($gtf_file) if $gtf_file;
+$blast_pairs_file = &Pipeliner::ensure_full_path($blast_pairs_file) if $blast_pairs_file;
+$output_dir = &Pipeliner::ensure_full_path($output_dir) if $output_dir;
 
 my $UTILDIR = $FindBin::Bin . "/util";
 

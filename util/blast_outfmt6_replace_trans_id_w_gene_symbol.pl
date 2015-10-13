@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 
-my $usage = "\n\n\tusage: $0 search_db.fasta  blast_results.outfmt6.grouped\n\n";
+my $usage = "\n\n\tusage: $0 search_db.fasta  blast_results.outfmt6\n\n";
 
 my $search_db = $ARGV[0] or die $usage;
 my $blast_outfmt6 = $ARGV[1] or die $usage;

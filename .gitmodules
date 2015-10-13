@@ -1,0 +1,6 @@
+[submodule "FusionFilter.wiki"]
+	path = FusionFilter.wiki
+	url = https://github.com/FusionFilter/FusionFilter.wiki.git
+[submodule "FusionFilter.github.io"]
+	path = FusionFilter.github.io
+	url = https://github.com/FusionFilter/FusionFilter.github.io.git

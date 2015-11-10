@@ -146,7 +146,6 @@ main: {
 
     
     $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index "
-            . " --twopassMode Basic "
             . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
             . " --sjdbGTFfile $gtf_file "

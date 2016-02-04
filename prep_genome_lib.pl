@@ -32,11 +32,9 @@ my $usage = <<__EOUSAGE__;
 #  --cdna_fa <string>              cdna fasta file
 #                                     Note: header format must be:
 #                                     transcript_id(tab)gene_id(tab)gene_symbol
+# Required by STAR
 #
-# Required by: FusionInspector:
-#
-#  --count_kmers                   flag to include additional build steps required by count_kmers
-#                                     (requires 'jellyfish' software exist in your PATH setting)
+#  --max_readlength <int>          max length for an individual RNA-Seq read (ie. 100)
 #
 #  Misc options:
 #
@@ -53,6 +51,18 @@ __EOUSAGE__
     ;
 
 
+
+
+=advanced_usage
+
+# Required by: FusionInspector if using GSNAP or HISAT:
+#
+#  --count_kmers                   flag to include additional build steps required by count_kmers
+#                                     (requires 'jellyfish' software exist in your PATH setting)
+#
+
+=cut
+
 my $help_flag;
 my $genome_fa_file;
 my $cdna_fa_file;
@@ -60,6 +70,7 @@ my $gtf_file;
 my $blast_pairs_file;
 my $output_dir;
 my $count_kmers;
+my $max_readlength;
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -72,6 +83,9 @@ my $count_kmers;
 
               # required for GMAP-fusion and FusionInspector
               'cdna_fa=s' => \$cdna_fa_file,
+              
+              # required for star
+              'max_readlength=i' => \$max_readlength,
               
               # optional
               'output_dir=s' => \$output_dir,
@@ -86,7 +100,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $blast_pairs_file) {
+unless ($genome_fa_file && $gtf_file && $blast_pairs_file && $max_readlength && $cdna_fa_file) {
     die $usage;
 }
 
@@ -149,7 +163,7 @@ main: {
             . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
             . " --sjdbGTFfile $gtf_file "
-            . " --sjdbOverhang 100 ";
+            . " --sjdbOverhang $max_readlength ";
     
     $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
 

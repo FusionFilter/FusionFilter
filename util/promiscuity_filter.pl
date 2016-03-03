@@ -4,23 +4,14 @@ use strict;
 use warnings;
 use Carp;
 use FindBin;
-use lib ("$FindBin::Bin/lib");
-use Fasta_reader;
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
-use TiedHash;
 use Data::Dumper;
 use List::Util qw(max);
-
-my $Evalue = 1e-3;
-my $tmpdir = "/tmp";
 
 my $MAX_PROMISCUITY = 3;  # perhaps a poor choice of words, but still a best fit IMHO.
 my $MIN_PCT_DOM_PROM = 20;
 
 my $usage = <<__EOUSAGE__;
-
-
-
 
 
 ###################################################################################################
@@ -31,15 +22,10 @@ my $usage = <<__EOUSAGE__;
 #                                 Required formatting is:  
 #                                 geneA--geneB (tab) junction_read_count (tab) spanning_read_count (tab) ... rest
 #
-#  --out_prefix <string>          prefix for output filename (will tack on .final and .final.abridged)
-#
 #  --genome_lib_dir <string>      genome lib directory
 #
 # Optional: 
 ##
-#  -E <float>                     E-value threshold for blast searches (default: $Evalue)
-#
-#  --tmpdir <string>              file for temporary files (default: $tmpdir)
 #
 #  --max_promiscuity <int>               maximum number of partners allowed for a given fusion. Default: $MAX_PROMISCUITY
 #
@@ -49,6 +35,13 @@ my $usage = <<__EOUSAGE__;
 #
 ####################################################################################################
 
+Two output files are generated:
+
+    \${fusion_preds}.post_promisc_filter  : contains those fusion predictions excluding the promiscuous entries.
+
+    \${fusion_preds}.post_promisc_filter.info   : contains all input fusions and promiscuous entries are annotated accordingly.
+
+
 
 __EOUSAGE__
 
@@ -57,25 +50,18 @@ __EOUSAGE__
 my $help_flag;
 
 my $fusion_preds_file;
-my $out_prefix;
 my $genome_lib_dir;
 
 &GetOptions ( 'h' => \$help_flag, 
               
               'fusion_preds=s' => \$fusion_preds_file,
-              
-              'out_prefix=s' => \$out_prefix,
 
-              'E=f' => \$Evalue,
-              'tmpdir=s' => \$tmpdir,
-              
               'max_promiscuity=i' => \$MAX_PROMISCUITY,
 
               'min_pct_dom_promiscuity' => \$MIN_PCT_DOM_PROM,
                    
               'genome_lib_dir=s' => \$genome_lib_dir,
-              
-              
+                            
     );
 
 if (@ARGV) {
@@ -87,21 +73,9 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
+unless ($fusion_preds_file && $genome_lib_dir) {
     die $usage;
 }
-
-
-my $BLAST_PAIRS_IDX;
-my $blast_pairs_idx_file = "$genome_lib_dir/blast_pairs.idx";
-if (-s $blast_pairs_idx_file) {
-    $BLAST_PAIRS_IDX = new TiedHash( { use => $blast_pairs_idx_file } );
-}
-else {
-    die "Error: cannot locate $blast_pairs_idx_file";
-}
-
-my %BLAST_CACHE;
 
 
 
@@ -123,15 +97,10 @@ my %BLAST_CACHE;
 
 main: {
 
-    unless (-d $tmpdir) {
-        mkdir $tmpdir or die "Error, cannot mkdir $tmpdir";
-    }
-    
-    
-    my $final_preds_file = "$out_prefix.final";
+    my $final_preds_file = "$fusion_preds_file.post_promisc_filter";
     open (my $final_ofh, ">$final_preds_file") or die "Error, cannot write to $final_preds_file";
     
-    my $filter_info_file = "$fusion_preds_file.post_blast_n_promisc_filter";
+    my $filter_info_file = "$fusion_preds_file.post_promisc_filter.info";
     open (my $filter_ofh, ">$filter_info_file") or die "Error, cannot write to $filter_info_file";
     
     my @fusions;
@@ -172,6 +141,10 @@ main: {
     
         push (@fusions, $fusion); 
     }
+    close $fh;
+    
+    
+    # generate outputs
     
     print $filter_ofh $header;
     print $final_ofh $header;
@@ -180,95 +153,24 @@ main: {
     
     @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
     
-    
-    ########################
-    ##  Filter and report ##
-    ########################
-    
-
-    my %AtoB;
-    my %BtoA;
-    
-    my %already_approved;
 
     foreach my $fusion (@fusions) {
-
         my ($geneA, $geneB) = split(/--/, $fusion->{fusion_name});
 
-
-        my @blast_info;
-
-        unless ($already_approved{$geneA}->{$geneB}) {
-           
-            @blast_info = &examine_seq_similarity($geneA, $geneB);
-            if (@blast_info) {
-                push (@blast_info, "SEQ_SIMILAR_PAIR");
-            }
-        }
-        
         my $line = $fusion->{line};
         
-        if (@blast_info) {
-            
-            print $filter_ofh "#" . "$line\t" . join("\t", @blast_info) . "\n";
-        }
-        else {
-            
-            print $final_ofh "$line\n";
-            print $filter_ofh "$line\n";
-            
-            $already_approved{$geneA}->{$geneB} = 1;
-        }
-        
+        print $final_ofh "$line\n";
+        print $filter_ofh "$line\n";
     }
     
     close $filter_ofh;
     close $final_ofh;
     
-        
+    
 
     exit(0);
 }
 
-
-####
-sub examine_seq_similarity {
-    my ($geneA, $geneB) = @_;
-    
-    #print STDERR "-examining seq similarity between $geneA and $geneB\n";
-
-    my @blast_hits;
-    
-
-
-    # use pre-computed blast pair data
-    if (my $hit = $BLAST_PAIRS_IDX->get_value("$geneA--$geneB")) {
-        return($hit);
-    }
-    elsif ($hit = $BLAST_PAIRS_IDX->get_value("$geneB--$geneA")) {
-        return($hit);
-    }
-    else {
-        return();
-    }
-}
-
-
-####
-sub process_cmd {
-    my ($cmd) = @_;
-
-    print STDERR "CMD: $cmd\n";
-        
-    my $ret = system($cmd);
-    if ($ret) {
-
-        die "Error, cmd $cmd died with ret $ret";
-    }
-    
-    return;
-}
-    
 
 ####
 sub remove_promiscuous_fusions {

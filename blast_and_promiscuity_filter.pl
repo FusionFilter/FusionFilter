@@ -30,8 +30,6 @@ my $usage = <<__EOUSAGE__;
 ##
 #  -E <float>                     E-value threshold for blast searches (default: $Evalue)
 #
-#  --tmpdir <string>              file for temporary files (default: $tmpdir)
-#
 #  --max_promiscuity <int>               maximum number of partners allowed for a given fusion. Default: $MAX_PROMISCUITY
 #
 #  --min_pct_dom_promiscuity <int>       for promiscuous fusions, those with less than this support of the dominant scoring pair 
@@ -58,11 +56,10 @@ my $genome_lib_dir;
               'out_prefix=s' => \$out_prefix,
 
               'E=f' => \$Evalue,
-              'tmpdir=s' => \$tmpdir,
               
               'max_promiscuity=i' => \$MAX_PROMISCUITY,
 
-              'min_pct_dom_promiscuity' => \$MIN_PCT_DOM_PROM,
+              'min_pct_dom_promiscuity=i' => \$MIN_PCT_DOM_PROM,
                    
               'genome_lib_dir=s' => \$genome_lib_dir,
               
@@ -100,10 +97,39 @@ unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
 =cut
 
 
+my $UTILDIR = "$FindBin::Bin/util";
+
+
 main: {
 
+    ## run blast filter
+    
+    my $cmd = "$UTILDIR/blast_filter.pl --fusion_preds $fusion_preds_file -E $Evalue --genome_lib_dir $genome_lib_dir";
+    &process_cmd($cmd);
 
+    my $blast_filtered_preds = "$fusion_preds_file.post_blast_filter";
+    unless (-s $blast_filtered_preds) {
+       confess "Error, no output file: $blast_filtered_preds  was generated.";
+    }
 
+    ## run the promiscuity filter
+    
+    $cmd = "$UTILDIR/promiscuity_filter.pl --fusion_preds $blast_filtered_preds "
+        . " --max_promiscuity $MAX_PROMISCUITY "
+        . " --min_pct_dom_promiscuity $MIN_PCT_DOM_PROM ";
+
+    &process_cmd($cmd);
+
+    my $post_promisc_outfile = "$blast_filtered_preds.post_promisc_filter";
+    unless (-s $post_promisc_outfile) {
+        confess "Error, no output file: $post_promisc_outfile";
+    }
+
+    ## just copy it to the expected output file name:
+
+    $cmd = "cp $post_promisc_outfile $out_prefix.final";
+    &process_cmd($cmd);
+    
 
     exit(0);
 }

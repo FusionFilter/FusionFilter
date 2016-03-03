@@ -1,4 +1,4 @@
-DIRS = blast_test  test_promiscuity
+DIRS = blast_test  test_promiscuity test_full
 
 test:
 	@for i in $(DIRS); do \

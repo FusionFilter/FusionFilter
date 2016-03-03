@@ -56,7 +56,7 @@ my $DEBUG;
 
               'max_promiscuity=i' => \$MAX_PROMISCUITY,
 
-              'min_pct_dom_promiscuity' => \$MIN_PCT_DOM_PROM,
+              'min_pct_dom_promiscuity=i' => \$MIN_PCT_DOM_PROM,
                    
               'debug' => \$DEBUG,
     );

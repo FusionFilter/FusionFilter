@@ -4,23 +4,14 @@ use strict;
 use warnings;
 use Carp;
 use FindBin;
-use lib ("$FindBin::Bin/lib");
-use Fasta_reader;
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
-use TiedHash;
-use Data::Dumper;
-use List::Util qw(max);
 
 my $Evalue = 1e-3;
-my $tmpdir = "/tmp";
 
 my $MAX_PROMISCUITY = 3;  # perhaps a poor choice of words, but still a best fit IMHO.
 my $MIN_PCT_DOM_PROM = 20;
 
 my $usage = <<__EOUSAGE__;
-
-
-
 
 
 ###################################################################################################
@@ -92,18 +83,6 @@ unless ($fusion_preds_file && $genome_lib_dir && $out_prefix) {
 }
 
 
-my $BLAST_PAIRS_IDX;
-my $blast_pairs_idx_file = "$genome_lib_dir/blast_pairs.idx";
-if (-s $blast_pairs_idx_file) {
-    $BLAST_PAIRS_IDX = new TiedHash( { use => $blast_pairs_idx_file } );
-}
-else {
-    die "Error: cannot locate $blast_pairs_idx_file";
-}
-
-my %BLAST_CACHE;
-
-
 
 =input_format:
 
@@ -123,135 +102,12 @@ my %BLAST_CACHE;
 
 main: {
 
-    unless (-d $tmpdir) {
-        mkdir $tmpdir or die "Error, cannot mkdir $tmpdir";
-    }
-    
-    
-    my $final_preds_file = "$out_prefix.final";
-    open (my $final_ofh, ">$final_preds_file") or die "Error, cannot write to $final_preds_file";
-    
-    my $filter_info_file = "$fusion_preds_file.post_blast_n_promisc_filter";
-    open (my $filter_ofh, ">$filter_info_file") or die "Error, cannot write to $filter_info_file";
-    
-    my @fusions;
-    open (my $fh, $fusion_preds_file) or die "Error, cannot open file $fusion_preds_file";
-    my $header = <$fh>;
-    unless ($header =~ /^\#/) {
-        die "Error, file $fusion_preds_file doesn't begin with a header line";
-    }
-    while (<$fh>) {
-        chomp;
-        my $line = $_;
-        my @x = split(/\t/);
-        my $fusion_name = $x[0];
-        my $J = $x[1];
-        my $S = $x[2];
 
 
-        my ($geneA, $geneB) = split(/--/, $fusion_name);
-
-        #my $score = sqrt($J**2 + $S**2);
-        my $score = $J*4 + $S;
-        
-        
-        my $fusion = { fusion_name => $fusion_name,
-                       
-                       J => $J,
-                       S => $S,
-                       
-                       geneA => $geneA,
-                       geneB => $geneB,
-                       
-                       score => $score, 
-                       
-                       sum_JS => $J + $S,
-                       
-                       line => $line,
-        };
-    
-        push (@fusions, $fusion); 
-    }
-    
-    print $filter_ofh $header;
-    print $final_ofh $header;
-    
-    @fusions = reverse sort {$a->{score} <=> $b->{score} } @fusions;
-    
-    @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
-    
-    
-    ########################
-    ##  Filter and report ##
-    ########################
-    
-
-    my %AtoB;
-    my %BtoA;
-    
-    my %already_approved;
-
-    foreach my $fusion (@fusions) {
-
-        my ($geneA, $geneB) = split(/--/, $fusion->{fusion_name});
-
-
-        my @blast_info;
-
-        unless ($already_approved{$geneA}->{$geneB}) {
-           
-            @blast_info = &examine_seq_similarity($geneA, $geneB);
-            if (@blast_info) {
-                push (@blast_info, "SEQ_SIMILAR_PAIR");
-            }
-        }
-        
-        my $line = $fusion->{line};
-        
-        if (@blast_info) {
-            
-            print $filter_ofh "#" . "$line\t" . join("\t", @blast_info) . "\n";
-        }
-        else {
-            
-            print $final_ofh "$line\n";
-            print $filter_ofh "$line\n";
-            
-            $already_approved{$geneA}->{$geneB} = 1;
-        }
-        
-    }
-    
-    close $filter_ofh;
-    close $final_ofh;
-    
-        
 
     exit(0);
 }
 
-
-####
-sub examine_seq_similarity {
-    my ($geneA, $geneB) = @_;
-    
-    #print STDERR "-examining seq similarity between $geneA and $geneB\n";
-
-    my @blast_hits;
-    
-
-
-    # use pre-computed blast pair data
-    if (my $hit = $BLAST_PAIRS_IDX->get_value("$geneA--$geneB")) {
-        return($hit);
-    }
-    elsif ($hit = $BLAST_PAIRS_IDX->get_value("$geneB--$geneA")) {
-        return($hit);
-    }
-    else {
-        return();
-    }
-}
 
 
 ####
@@ -269,144 +125,3 @@ sub process_cmd {
     return;
 }
     
-
-####
-sub remove_promiscuous_fusions {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom) = @_;
-    
-        
-    my @filtered_fusions = &filter_promiscuous_low_pct_prom_dom($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom);
-    
-    @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
-    
-    return(@filtered_fusions);
-}
-
-####
-sub filter_promiscuous_low_pct_prom_dom {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom) = @_;
-    
-    my %max_sum_support_fusion_partner = &get_max_sum_support_fusion_partner($fusions_aref);
-    
-    my %partners = &count_fusion_partners($fusions_aref);
-    
-    my @ret_fusions;
-    
-    foreach my $fusion (@$fusions_aref) {
-        
-        my $geneA = $fusion->{geneA};
-        my $geneB = $fusion->{geneB};
-        
-        my $sum_JS = $fusion->{sum_JS};
-        
-        my $num_geneA_partners = scalar(keys %{$partners{$geneA}});
-        my $num_geneB_partners = scalar(keys %{$partners{$geneB}});
-        
-        
-        if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
-            
-            my $max_partner_support = max($max_sum_support_fusion_partner{$geneA}, $max_sum_support_fusion_partner{$geneB});
-
-            my $pct_prom_dom = sprintf("%.1f", $sum_JS / $max_partner_support * 100);
-            if ($pct_prom_dom < $min_pct_prom_dom) {
-                
-                print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners AND having only $pct_prom_dom support ($sum_JS) of max partner support ($max_partner_support)\n";
-            }
-            else {
-                # ok, keeping it.
-                push (@ret_fusions, $fusion);
-            }
-        }
-    }
-    
-    return(@ret_fusions);
-    
-}
-
-####
-sub filter_remaining_promiscuous_fusions {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity) = @_;
-    
-    ## any remaining promiscuous ones are to be tossed.
-    
-    my %partners = &count_fusion_partners($fusions_aref);
-
-    my @ret_fusions;
-    
-    foreach my $fusion (@$fusions_aref) {
-
-        my $geneA = $fusion->{geneA};
-        my $geneB = $fusion->{geneB};
-
-        my $num_geneA_partners = scalar(keys %{$partners{$geneA}});
-        my $num_geneB_partners = scalar(keys %{$partners{$geneB}});
-        
-        if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
-            
-            print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners\n";
-        }
-        else {
-            push (@ret_fusions, $fusion);
-        }
-    }
-    
-
-    return(@ret_fusions);
-}
-
-####
-sub count_fusion_partners {
-    my ($fusions_aref) = @_;
-
-    my %partners;
-    
-    foreach my $fusion (@$fusions_aref) {
-
-        my $geneA = $fusion->{geneA};
-        my $geneB = $fusion->{geneB};
-
-        $partners{$geneA}->{$geneB}++;
-        $partners{$geneB}->{$geneA}++;
-
-    }
-    
-    return(%partners);
-}
-
-####
-sub get_max_sum_support_fusion_partner {
-    my ($fusions_aref) = @_;
-
-    my %partner_to_max_support;
-
-    foreach my $fusion (@$fusions_aref) {
-        my ($geneA, $geneB) = ($fusion->{geneA}, $fusion->{geneB});
-        
-        my $sum_support = $fusion->{sum_JS} or confess "Error, no sum_JS for " . Dumper($fusion);
-        
-        if ( (! exists $partner_to_max_support{$geneA}) || $partner_to_max_support{$geneA} < $sum_support) {
-            $partner_to_max_support{$geneA} = $sum_support;
-        }
-
-        if ( (! exists $partner_to_max_support{$geneB}) || $partner_to_max_support{$geneB} < $sum_support) {
-            $partner_to_max_support{$geneB} = $sum_support;
-        }
-
-    }
-
-    return(%partner_to_max_support);
-}
-
-
-####
-sub is_promiscuous {
-    my ($num_geneA_partners, $num_geneB_partners, $max_promiscuity) = @_;
-    
-
-    if ($num_geneA_partners > $max_promiscuity || $num_geneB_partners > $max_promiscuity) {
-        return(1);
-    }
-    else {
-        return(0);
-    }
-}

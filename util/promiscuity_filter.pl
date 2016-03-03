@@ -22,8 +22,6 @@ my $usage = <<__EOUSAGE__;
 #                                 Required formatting is:  
 #                                 geneA--geneB (tab) junction_read_count (tab) spanning_read_count (tab) ... rest
 #
-#  --genome_lib_dir <string>      genome lib directory
-#
 # Optional: 
 ##
 #
@@ -50,7 +48,7 @@ __EOUSAGE__
 my $help_flag;
 
 my $fusion_preds_file;
-my $genome_lib_dir;
+my $DEBUG;
 
 &GetOptions ( 'h' => \$help_flag, 
               
@@ -60,8 +58,7 @@ my $genome_lib_dir;
 
               'min_pct_dom_promiscuity' => \$MIN_PCT_DOM_PROM,
                    
-              'genome_lib_dir=s' => \$genome_lib_dir,
-                            
+              'debug' => \$DEBUG,
     );
 
 if (@ARGV) {
@@ -73,7 +70,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($fusion_preds_file && $genome_lib_dir) {
+unless ($fusion_preds_file) {
     die $usage;
 }
 
@@ -111,6 +108,7 @@ main: {
     }
     while (<$fh>) {
         chomp;
+        unless (/\w/) { next; }
         my $line = $_;
         my @x = split(/\t/);
         my $fusion_name = $x[0];
@@ -142,6 +140,10 @@ main: {
         push (@fusions, $fusion); 
     }
     close $fh;
+    
+    if ($DEBUG) {
+        print STDERR "Incoming fusions: " . Dumper(\@fusions);
+    }
     
     
     # generate outputs
@@ -175,11 +177,20 @@ main: {
 ####
 sub remove_promiscuous_fusions {
     my ($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom) = @_;
-    
-        
+            
     my @filtered_fusions = &filter_promiscuous_low_pct_prom_dom($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom);
+
+    if ($DEBUG) {
+        print STDERR "After filtering proms low pct dom: " . Dumper(\@filtered_fusions);
+    }
+
     
     @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
+    
+    
+    if ($DEBUG) {
+        print STDERR "After removing remaining promiscuous fusions: " . Dumper(\@filtered_fusions);
+    }
     
     return(@filtered_fusions);
 }
@@ -213,12 +224,13 @@ sub filter_promiscuous_low_pct_prom_dom {
             if ($pct_prom_dom < $min_pct_prom_dom) {
                 
                 print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners AND having only $pct_prom_dom support ($sum_JS) of max partner support ($max_partner_support)\n";
-            }
-            else {
-                # ok, keeping it.
-                push (@ret_fusions, $fusion);
+                next;
             }
         }
+        
+        # ok, keeping it.
+        push (@ret_fusions, $fusion);
+        
     }
     
     return(@ret_fusions);

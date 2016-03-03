@@ -12,6 +12,8 @@ use File::Path;
 
 my $CPU = 4;
 
+my $max_readlength = 100;
+
 my $usage = <<__EOUSAGE__;
 
 ##################################################################################
@@ -27,14 +29,9 @@ my $usage = <<__EOUSAGE__;
 #                                  in BLAST+ '-outfmt 6'  format and gzipped!
 #                                     Note: gene symbols must replace transcript IDs.
 #
-# Required by: GMAP-Fusion and FusionInspector
-#
-#  --cdna_fa <string>              cdna fasta file
-#                                     Note: header format must be:
-#                                     transcript_id(tab)gene_id(tab)gene_symbol
 # Required by STAR
 #
-#  --max_readlength <int>          max length for an individual RNA-Seq read (ie. 100)
+#  --max_readlength <int>          max length for an individual RNA-Seq read (ie. default: $max_readlength)
 #
 #  Misc options:
 #
@@ -45,21 +42,25 @@ my $usage = <<__EOUSAGE__;
 ##################################################################################
 
 
-
 __EOUSAGE__
 
     ;
 
 
 
-
 =advanced_usage
 
-# Required by: FusionInspector if using GSNAP or HISAT:
+#  Experimental - when using FusionInspector with GSNAP and/or HISAT
 #
 #  --count_kmers                   flag to include additional build steps required by count_kmers
 #                                     (requires 'jellyfish' software exist in your PATH setting)
 #
+#  --cdna_fa <string>              cdna fasta file
+#                                     Note: header format must be:
+#                                     transcript_id(tab)gene_id(tab)gene_symbol
+#                                  (requires bowtie(v1)-build in PATH setting)
+#
+
 
 =cut
 
@@ -70,7 +71,7 @@ my $gtf_file;
 my $blast_pairs_file;
 my $output_dir;
 my $count_kmers;
-my $max_readlength;
+
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -81,9 +82,6 @@ my $max_readlength;
               # required for STAR-Fusion, FusionInspector, and GMAP-Fusion
               'blast_pairs=s' => \$blast_pairs_file,
 
-              # required for GMAP-fusion and FusionInspector
-              'cdna_fa=s' => \$cdna_fa_file,
-              
               # required for star
               'max_readlength=i' => \$max_readlength,
               
@@ -91,8 +89,9 @@ my $max_readlength;
               'output_dir=s' => \$output_dir,
               'CPU=i' => \$CPU,
     
-              # required for FusionInspector
+              # required for FusionInspector w/ gsnap and/or hisat
               'count_kmers' => \$count_kmers,
+              'cdna_fa=s' => \$cdna_fa_file,
     );
 
 
@@ -100,7 +99,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $blast_pairs_file && $max_readlength && $cdna_fa_file) {
+unless ($genome_fa_file && $gtf_file && $blast_pairs_file && $max_readlength) {
     die $usage;
 }
 
@@ -175,7 +174,14 @@ main: {
         $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
     }
     
-
+    
+    #########################
+    # build GMAP genome index
+    
+    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
+    
+    
     #######################
     # index the blast pairs
     
@@ -200,13 +206,8 @@ main: {
         $cmd = "bowtie-build $output_dir/ref_cdna.fasta $output_dir/ref_cdna.fasta";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.bowtie_idx.ok"));
         
-        
-        # build GMAP genome index
-        $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
-        
     }
-            
+                
     if ($count_kmers) {
         my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $output_dir/ref_genome.fa";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.count.ok"));

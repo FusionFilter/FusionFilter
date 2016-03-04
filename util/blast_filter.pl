@@ -109,8 +109,6 @@ main: {
     my $filter_info_file = "$fusion_preds_file.post_blast_filter.info";
     open (my $filter_ofh, ">$filter_info_file") or die "Error, cannot write to $filter_info_file";
 
-    my %already_approved;
-
     open (my $fh, $fusion_preds_file) or die "Error, cannot open file $fusion_preds_file";
     my $header = <$fh>;
     unless ($header =~ /^\#/) {
@@ -118,6 +116,9 @@ main: {
     }
     print $filter_ofh $header;
     print $final_ofh $header;
+
+
+    my @fusions;
     
     while (<$fh>) {
         chomp;
@@ -126,18 +127,97 @@ main: {
         my $fusion_name = $x[0];
 
         my ($geneA, $geneB) = split(/--/, $fusion_name);
+        my ($J, $S) = ($x[1], $x[2]);
+
+        my $score = 4*$J + $S;
+        
+        push (@fusions, { line => $line,
+                          fusion_name => $fusion_name,
+                          geneA => $geneA,
+                          geneB => $geneB,
+                          score => $score,
+              } );
+
+    }
+    close $fh;
+
+    
+    ## sort in order of score, descendingly
+    @fusions = reverse sort {$a->{score}<=>$b->{score}
+                             ||
+                                 $b->{fusion_name} cmp $a->{fusion_name}  # for more stable sorting.
+                             
+                             
+
+    } @fusions;
+    
+
+    ########################
+    ##  Filter and report ##
+    ########################
+    
+    #######################################################################
+    ## Screen out paralog hits such that fusion A--B exists w/ a high score
+    ##    and A--C exists with a lower score
+    ##    and B has sequence similarity to C
+    ##   in which case, we keep A--B and discard A--C
+    #######################################################################
+
+    my %AtoB;
+    my %BtoA;
+    
+    my %already_approved;
+    
+
+    foreach my $fusion (@fusions) {
+        
+        my $geneA = $fusion->{geneA};
+        my $geneB = $fusion->{geneB};
+        
+        
 
         my @blast_info;
 
-        unless ($already_approved{$geneA}->{$geneB}) {
+        if ($already_approved{$geneA}->{$geneB}) {
+            
+            # no op
+        }
+        else {
             
             @blast_info = &examine_seq_similarity($geneA, $geneB);
             if (@blast_info) {
                 push (@blast_info, "SEQ_SIMILAR_PAIR");
             }
+            else {
+
+                ## See if we already captured a fusion containing a paralog of the partner here:
+                
+                my $altB_href = $AtoB{$geneA};
+                if ($altB_href) {
+                    foreach my $altB (keys %$altB_href) {
+                        my @blast = &examine_seq_similarity($geneB, $altB);
+                        if (@blast) {
+                            push (@blast, "ALREADY_EXAMINED:$geneA--$altB");
+                            push (@blast_info, @blast);
+                        }
+                    }
+                }
+                
+                my $altA_href = $BtoA{$geneB};
+                if ($altA_href) {
+                    foreach my $altA (keys %$altA_href) {
+                        my @blast = &examine_seq_similarity($altA, $geneA);
+                        if (@blast) {
+                            push (@blast, "ALREADY_EXAMINED:$altA--$geneB");
+                            push (@blast_info, @blast);
+                        }
+                    }
+                }
+            }
         }
         
-                
+        my $line = $fusion->{line};
+        
         if (@blast_info) {
             
             print $filter_ofh "#" . "$line\t" . join("\t", @blast_info) . "\n";
@@ -149,9 +229,12 @@ main: {
             
             $already_approved{$geneA}->{$geneB} = 1;
         }
+
+        $AtoB{$geneA}->{$geneB} = 1;
+        $BtoA{$geneB}->{$geneA} = 1;
         
     }
-    close $fh;
+
 
     close $filter_ofh;
     close $final_ofh;

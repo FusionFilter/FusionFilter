@@ -151,7 +151,11 @@ main: {
     print $filter_ofh $header;
     print $final_ofh $header;
     
-    @fusions = reverse sort {$a->{score} <=> $b->{score} } @fusions;
+    @fusions = reverse sort {$a->{score} <=> $b->{score} 
+                             ||
+                                 $b->{fusion_name} cmp $a->{fusion_name}  # more stable sorting
+
+    } @fusions;
     
     @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
     

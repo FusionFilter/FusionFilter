@@ -122,6 +122,7 @@ main: {
     
     while (<$fh>) {
         chomp;
+        unless (/\w/) { next; }
         my $line = $_;
         my @x = split(/\t/);
         my $fusion_name = $x[0];

@@ -18,7 +18,7 @@ my $usage = <<__EOUSAGE__;
 
 ##################################################################################
 #
-#  Required by: STAR-Fusion, GMAP-Fusion, and FusionInspector
+#  Required by: STAR-Fusion and FusionInspector
 #
 #  --genome_fa  <string>           genome fasta file
 #
@@ -38,6 +38,8 @@ my $usage = <<__EOUSAGE__;
 #  --output_dir <string>           output directory
 #
 #  --CPU <int>                     number of threads (defalt: $CPU)
+#
+#  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
 #
 ##################################################################################
 
@@ -72,6 +74,7 @@ my $blast_pairs_file;
 my $output_dir;
 my $count_kmers;
 
+my $gmap_build_flag = 0;
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -92,6 +95,9 @@ my $count_kmers;
               # required for FusionInspector w/ gsnap and/or hisat
               'count_kmers' => \$count_kmers,
               'cdna_fa=s' => \$cdna_fa_file,
+
+              # for discasm
+              'gmap_build' => \$gmap_build_flag,
     );
 
 
@@ -174,25 +180,38 @@ main: {
         $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
     }
     
-    
-    #########################
-    # build GMAP genome index
-    
-    $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
-    
-    
+
     #######################
     # index the blast pairs
     
     $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
     $pipeliner->add_commands(new Command($cmd, "$output_dir/_blast_pairs.idx.ok"));
-    
 
-    ##########################
-    # Prep the cdna fasta file
+
+
+
+    ############################################################
+    ## Sections below are optional depending on optional params
+    ############################################################
+    
+    if ($gmap_build_flag) {
+        
+        #########################
+        # build GMAP genome index
+        
+        $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
+    }
     
     if ($cdna_fa_file) {
+
+        
+        ## This is for FusionInspector, in case HISAT or GSNAP is used.
+        
+
+        ##########################
+        # Prep the cdna fasta file
+        
         unless (-e "$output_dir/ref_cdna.fasta") {
             $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
             $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));

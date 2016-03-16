@@ -126,7 +126,14 @@ unless ($output_dir) {
     $output_dir = cwd();
 }
 
-my @tools_required = qw(STAR gmap_build bowtie-build);
+my @tools_required = qw(STAR);
+if ($gmap_build_flag) {
+    push (@tools_required, 'gmap_build');
+}
+if ($cdna_fa_file) {
+    push (@tools_required, 'bowtie-build');
+}
+
 my $missing_tool_flag = 0;
 foreach my $tool (@tools_required) {
     my $path = `which $tool`;

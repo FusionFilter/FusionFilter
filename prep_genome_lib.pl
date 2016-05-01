@@ -174,6 +174,7 @@ main: {
     $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index "
             . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
+            . " --genomeChrBinNbits 16 " # needed for >4k contigs w/ FI
             . " --sjdbGTFfile $gtf_file "
             . " --sjdbOverhang $max_readlength ";
     

@@ -22,7 +22,12 @@ fasta_acc_filter.pl chr.accs GRCh38.primary_assembly.genome.fa > GRCh38.primary_
 /seq/annotation/bio_tools/RepeatMasker-open-4-0-3/RepeatMasker/RepeatMasker -pa 20 -s -species human -xsmall gencode.v24.annotation.gtf.cdna.fa
 
 
+####
+# all-vs-all blastn
 makeblastdb -in gencode.v24.annotation.gtf.cdna.fa.masked -dbtype nucl
 
 blastn -query gencode.v24.annotation.gtf.cdna.fa.masked -db gencode.v24.annotation.gtf.cdna.fa.masked  -max_target_seqs 10000 -outfmt 6 -evalue 1e-3 -lcase_masking  -word_size 11 -num_threads 20 > blast_pairs.outfmt6
+
+# replace gene symbols for trans ids
+~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl gencode.v24.annotation.gtf.cdna.fa.masked blast_pairs.outfmt6 | gzip > blast_pairs.gene_syms.outfmt6.gz
 

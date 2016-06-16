@@ -103,8 +103,6 @@ sub GTF_to_gene_objs {
         
         $gene_id_to_source{$gene_id} = $source;
 
-        $annot =~ /transcript_id \"([^\"]+)\"/  or confess "Error, cannot get transcript_id from $annot of line\n$_";
-        my $transcript_id = $1;
 
         if ($annot =~ /name \"([^\"]+)\"/) {
             my $name = $1;
@@ -121,6 +119,9 @@ sub GTF_to_gene_objs {
 		# print "gene_id: $gene_id, transcrpt_id: $transcript_id, $type\n";
 
         if ($type eq 'transcript' || $type eq 'gene') { next; } # capture by exon coordinates
+
+        $annot =~ /transcript_id \"([^\"]+)\"/  or confess "Error, cannot get transcript_id from $annot of line\n$_";
+        my $transcript_id = $1;
 
         
         if ($type eq 'CDS' || $type eq 'stop_codon' || $type eq 'start_codon') {

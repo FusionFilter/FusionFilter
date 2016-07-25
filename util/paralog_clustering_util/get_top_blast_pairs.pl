@@ -4,6 +4,11 @@ use strict;
 use warnings;
 
 
+my $usage = "\n\n\tusage: $0 blastn.outfmt6.grouped.geneSym.sorted\n\n** NOTE, MUST BE PRE-SORTED like so:\n"
+    . "     cat blastn.outfmt6.grouped.geneSym | sort -k4,4g -k3,3gr > blastn.outfmt6.grouped.geneSym.sorted \n\n\n";
+
+my $input_file = $ARGV[0] or die $usage;
+
 
 main: {
     
@@ -13,7 +18,7 @@ main: {
 
     my %data;
     
-    open (my $fh, "blastn.outfmt6.grouped.geneSym.sorted") or die $!;
+    open (my $fh, $input_file) or die "Error, cannot open file: $input_file";
     while (<$fh>) {
         my $line = $_;
         chomp;

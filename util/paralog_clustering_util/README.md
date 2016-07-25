@@ -13,10 +13,15 @@
 
 ## perform paralog-level clustering:
 
-   outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blastn.outfmt6.grouped.geneSym.sorted.top --min_pct_len 1 --min_per_id 90 --inflation_factor 5
+    outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blastn.outfmt6.grouped.geneSym.sorted.top --min_pct_len 1 --min_per_id 90 --inflation_factor 5
+
+    ln -s dump.out.blastn.outfmt6.grouped.geneSym.sorted.top.minLEN_1_pct_len.minPID_90.abc.mci.I50  paralog_clusters.dat
 
 
 ## perform simple 'nucleotide blast clusters'
 
     outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blastn.outfmt6.grouped.geneSym.sorted.top --min_pct_len 1 --min_per_id 60 --inflation_factor 5
+
+    ln -s dump.out.blastn.outfmt6.grouped.geneSym.sorted.top.minLEN_1_pct_len.minPID_60.abc.mci.I50 nuc_clusters.dat
+
 

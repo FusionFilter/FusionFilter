@@ -162,12 +162,15 @@ main: {
     ##    and A--C exists with a lower score
     ##    and B has sequence similarity to C
     ##   in which case, we keep A--B and discard A--C
+    ##   (unless B and C physically overlap on the genome!)
     #######################################################################
 
     my %AtoB;
     my %BtoA;
     
     my %already_approved;
+    
+    my %gene_to_genome_span = &parse_gene_span_info("$genome_lib_dir/ref_annot.gtf.gene_spans");
     
 
     foreach my $fusion (@fusions) {
@@ -187,17 +190,20 @@ main: {
             
             @blast_info = &examine_seq_similarity($geneA, $geneB);
             if (@blast_info) {
+    
+                # immediately discarding seq-similar fusion partners
                 push (@blast_info, "SEQ_SIMILAR_PAIR");
             }
             else {
-
+                
                 ## See if we already captured a fusion containing a paralog of the partner here:
                 
                 my $altB_href = $AtoB{$geneA};
                 if ($altB_href) {
                     foreach my $altB (keys %$altB_href) {
                         my @blast = &examine_seq_similarity($geneB, $altB);
-                        if (@blast) {
+                        my $overlapping_genes_flag = &are_genes_overlapping(\%gene_to_genome_span, $geneB, $altB);
+                        if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$geneA--$altB");
                             push (@blast_info, @blast);
                         }
@@ -208,7 +214,8 @@ main: {
                 if ($altA_href) {
                     foreach my $altA (keys %$altA_href) {
                         my @blast = &examine_seq_similarity($altA, $geneA);
-                        if (@blast) {
+                        my $overlapping_genes_flag = &are_genes_overlapping(\%gene_to_genome_span, $altA, $geneA);
+                        if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$altA--$geneB");
                             push (@blast_info, @blast);
                         }
@@ -265,3 +272,57 @@ sub examine_seq_similarity {
         return();
     }
 }
+
+
+####
+sub parse_gene_span_info {
+    my ($gene_spans_file) = @_;
+    
+    my %gene_to_span_info;
+    
+    open (my $fh, $gene_spans_file) or die "Error, cannot open file: $gene_spans_file .... be sure to have run prep_genome_lib.pl to generate it";
+    while (<$fh>) {
+        chomp;
+        my @x = split(/\t/);
+        my $gene_symbol = $x[5];
+        my $chr = $x[1];
+        my ($lend, $rend) = sort {$a<=>$b} ($x[2], $x[3]); # should already be sorted, but just in case.
+        
+        $gene_to_span_info{$gene_symbol} = { chr => $chr,
+                                             lend => $lend,
+                                             rend => $rend };
+
+    }
+
+    close $fh;
+
+    return(%gene_to_span_info);
+}
+
+
+####
+sub are_genes_overlapping {
+    my ($gene_to_genome_span_href, $geneA, $geneB) = @_;
+    
+    my $genome_span_A_href = $gene_to_genome_span_href->{$geneA} or die "Error, no gene span info found for $geneA";
+    my $genome_span_B_href = $gene_to_genome_span_href->{$geneB} or die "Error, no gene span info found for $geneB";
+    
+    if ($genome_span_A_href->{chr} eq $genome_span_B_href->{chr}
+
+        &&
+
+        ## coordinate overlap testing
+        $genome_span_A_href->{lend} < $genome_span_B_href->{rend}
+        &&   
+        $genome_span_A_href->{rend} > $genome_span_B_href->{lend}   
+        
+        ) {
+        
+        return(1);
+    }
+    else {
+        return(0);
+    }
+
+}
+

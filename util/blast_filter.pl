@@ -8,6 +8,7 @@ use lib ("$FindBin::Bin/../lib");
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
 use TiedHash;
 use Data::Dumper;
+use Gene_overlap_check;
 
 
 my $Evalue = 1e-3;
@@ -169,9 +170,9 @@ main: {
     my %BtoA;
     
     my %already_approved;
-    
-    my %gene_to_genome_span = &parse_gene_span_info("$genome_lib_dir/ref_annot.gtf.gene_spans");
-    
+
+    my $gene_overlap_checker = new Gene_overlap_check("$genome_lib_dir/ref_annot.gtf.gene_spans");
+        
 
     foreach my $fusion (@fusions) {
         
@@ -202,7 +203,7 @@ main: {
                 if ($altB_href) {
                     foreach my $altB (keys %$altB_href) {
                         my @blast = &examine_seq_similarity($geneB, $altB);
-                        my $overlapping_genes_flag = &are_genes_overlapping(\%gene_to_genome_span, $geneB, $altB);
+                        my $overlapping_genes_flag = $gene_overlap_checker->are_genes_overlapping($geneB, $altB);
                         if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$geneA--$altB");
                             push (@blast_info, @blast);
@@ -214,7 +215,7 @@ main: {
                 if ($altA_href) {
                     foreach my $altA (keys %$altA_href) {
                         my @blast = &examine_seq_similarity($altA, $geneA);
-                        my $overlapping_genes_flag = &are_genes_overlapping(\%gene_to_genome_span, $altA, $geneA);
+                        my $overlapping_genes_flag = $gene_overlap_checker->are_genes_overlapping($altA, $geneA);
                         if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$altA--$geneB");
                             push (@blast_info, @blast);
@@ -271,58 +272,5 @@ sub examine_seq_similarity {
     else {
         return();
     }
-}
-
-
-####
-sub parse_gene_span_info {
-    my ($gene_spans_file) = @_;
-    
-    my %gene_to_span_info;
-    
-    open (my $fh, $gene_spans_file) or die "Error, cannot open file: $gene_spans_file .... be sure to have run prep_genome_lib.pl to generate it";
-    while (<$fh>) {
-        chomp;
-        my @x = split(/\t/);
-        my $gene_symbol = $x[5];
-        my $chr = $x[1];
-        my ($lend, $rend) = sort {$a<=>$b} ($x[2], $x[3]); # should already be sorted, but just in case.
-        
-        $gene_to_span_info{$gene_symbol} = { chr => $chr,
-                                             lend => $lend,
-                                             rend => $rend };
-
-    }
-
-    close $fh;
-
-    return(%gene_to_span_info);
-}
-
-
-####
-sub are_genes_overlapping {
-    my ($gene_to_genome_span_href, $geneA, $geneB) = @_;
-    
-    my $genome_span_A_href = $gene_to_genome_span_href->{$geneA} or die "Error, no gene span info found for $geneA";
-    my $genome_span_B_href = $gene_to_genome_span_href->{$geneB} or die "Error, no gene span info found for $geneB";
-    
-    if ($genome_span_A_href->{chr} eq $genome_span_B_href->{chr}
-
-        &&
-
-        ## coordinate overlap testing
-        $genome_span_A_href->{lend} < $genome_span_B_href->{rend}
-        &&   
-        $genome_span_A_href->{rend} > $genome_span_B_href->{lend}   
-        
-        ) {
-        
-        return(1);
-    }
-    else {
-        return(0);
-    }
-
 }
 

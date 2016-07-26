@@ -7,6 +7,8 @@ use FindBin;
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
 use Data::Dumper;
 use List::Util qw(max);
+use lib ("$FindBin::Bin/../lib");
+use Gene_overlap_check;
 
 my $MAX_PROMISCUITY = 3;  # perhaps a poor choice of words, but still a best fit IMHO.
 my $MIN_PCT_DOM_PROM = 20;
@@ -21,6 +23,8 @@ my $usage = <<__EOUSAGE__;
 #  --fusion_preds <string>        preliminary fusion predictions
 #                                 Required formatting is:  
 #                                 geneA--geneB (tab) junction_read_count (tab) spanning_read_count (tab) ... rest
+#
+#  --genome_lib_dir <string>      CTAT genome lib directory
 #
 # Optional: 
 ##
@@ -49,6 +53,7 @@ my $help_flag;
 
 my $fusion_preds_file;
 my $DEBUG;
+my $genome_lib_dir = "";
 
 &GetOptions ( 'h' => \$help_flag, 
               
@@ -58,7 +63,9 @@ my $DEBUG;
 
               'min_pct_dom_promiscuity=i' => \$MIN_PCT_DOM_PROM,
                    
-              'debug' => \$DEBUG,
+              'genome_lib_dir=s' => \$genome_lib_dir,
+
+              'debug|d' => \$DEBUG,
     );
 
 if (@ARGV) {
@@ -70,7 +77,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($fusion_preds_file) {
+unless ($fusion_preds_file && $genome_lib_dir) {
     die $usage;
 }
 
@@ -219,6 +226,7 @@ sub filter_promiscuous_low_pct_prom_dom {
         my $num_geneA_partners = scalar(keys %{$partners{$geneA}});
         my $num_geneB_partners = scalar(keys %{$partners{$geneB}});
         
+        print STDERR "Fusion: $geneA--$geneB, partnersA: $num_geneA_partners, partnersB: $num_geneB_partners\n" if $DEBUG;
         
         if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
             
@@ -245,6 +253,8 @@ sub filter_promiscuous_low_pct_prom_dom {
 sub filter_remaining_promiscuous_fusions {
     my ($fusions_aref, $filter_ofh, $max_promiscuity) = @_;
     
+    print STDERR "-filter_remaining_promiscuous_fusions\n" if $DEBUG;
+    
     ## any remaining promiscuous ones are to be tossed.
     
     my %partners = &count_fusion_partners($fusions_aref);
@@ -256,9 +266,31 @@ sub filter_remaining_promiscuous_fusions {
         my $geneA = $fusion->{geneA};
         my $geneB = $fusion->{geneB};
 
-        my $num_geneA_partners = scalar(keys %{$partners{$geneA}});
-        my $num_geneB_partners = scalar(keys %{$partners{$geneB}});
+        my @geneA_partners = keys %{$partners{$geneA}};
+        my @geneB_partners = keys %{$partners{$geneB}};
         
+        my $num_geneA_partners = scalar(@geneA_partners);
+        my $num_geneB_partners = scalar(@geneB_partners);
+        
+        print STDERR "Fusion: $geneA--$geneB, num_A_partners: $num_geneA_partners, num_B_partners: $num_geneB_partners\n" if $DEBUG;
+        
+        if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
+
+            print STDERR "-looks potentially promiscuous, ressessing based on loci counting\n" if $DEBUG;
+
+            ## reassess by counting chromosomal loci
+            if ($num_geneA_partners > $max_promiscuity) {
+                $num_geneA_partners = &reassess_loci_count(@geneA_partners);
+            }
+            if ($num_geneB_partners > $max_promiscuity) {
+                $num_geneB_partners = &reassess_loci_count(@geneB_partners);
+            }
+            print STDERR "\treassessed: Fusion: $geneA--$geneB, num_A_partners: $num_geneA_partners, num_B_partners: $num_geneB_partners\n" if $DEBUG;
+
+
+        }
+        
+
         if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
             
             print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners\n";
@@ -328,3 +360,30 @@ sub is_promiscuous {
         return(0);
     }
 }
+
+
+####
+sub reassess_loci_count {
+    my (@genes) = @_;
+
+    my %loci;
+    my $gene_overlap_checker = new Gene_overlap_check("$genome_lib_dir/ref_annot.gtf.gene_spans");
+    
+    foreach my $gene (@genes) {
+        my $gene_span_info_struct = $gene_overlap_checker->get_gene_span_info($gene);
+
+        my $chr = $gene_span_info_struct->{chr};
+        my $midpt = ($gene_span_info_struct->{lend} + $gene_span_info_struct->{rend})/2;
+
+        my $locus_interval = int($midpt/1e5); # use 100k intervals
+
+        my $locus_token = "$chr:$locus_interval";
+        $loci{$locus_token}++;
+    }
+
+    my $num_loci = scalar(keys %loci);
+
+    return($num_loci);
+    
+}
+        

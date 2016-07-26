@@ -187,6 +187,11 @@ main: {
         $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
         $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.ok"));
     }
+
+    unless (-e "$output_dir/ref_annot.gtf.gene_spans") {
+        $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
+        $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.gene_spans.ok") );
+    }
     
 
     #######################

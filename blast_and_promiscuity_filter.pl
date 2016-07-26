@@ -49,6 +49,8 @@ my $fusion_preds_file;
 my $out_prefix;
 my $genome_lib_dir;
 
+my $EXCLUDE_LOCI_OVERLAP_CHECK = 0;
+
 &GetOptions ( 'h' => \$help_flag, 
               
               'fusion_preds=s' => \$fusion_preds_file,
@@ -63,6 +65,7 @@ my $genome_lib_dir;
                    
               'genome_lib_dir=s' => \$genome_lib_dir,
               
+              'exclude_loci_overlap_check' => \$EXCLUDE_LOCI_OVERLAP_CHECK,
               
     );
 
@@ -105,6 +108,10 @@ main: {
     ## run blast filter
     
     my $cmd = "$UTILDIR/blast_filter.pl --fusion_preds $fusion_preds_file -E $Evalue --genome_lib_dir $genome_lib_dir";
+    if ($EXCLUDE_LOCI_OVERLAP_CHECK) {
+        $cmd .= " --exclude_loci_overlap_check";
+    }
+
     &process_cmd($cmd);
 
     my $blast_filtered_preds = "$fusion_preds_file.post_blast_filter";
@@ -115,9 +122,15 @@ main: {
     ## run the promiscuity filter
     
     $cmd = "$UTILDIR/promiscuity_filter.pl --fusion_preds $blast_filtered_preds "
+        . " --genome_lib_dir $genome_lib_dir "
         . " --max_promiscuity $MAX_PROMISCUITY "
         . " --min_pct_dom_promiscuity $MIN_PCT_DOM_PROM ";
 
+    if ($EXCLUDE_LOCI_OVERLAP_CHECK) {
+        $cmd .= " --exclude_loci_overlap_check";
+    }
+    
+    
     &process_cmd($cmd);
 
     my $post_promisc_outfile = "$blast_filtered_preds.post_promisc_filter";

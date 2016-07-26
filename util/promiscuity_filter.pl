@@ -55,6 +55,8 @@ my $fusion_preds_file;
 my $DEBUG;
 my $genome_lib_dir = "";
 
+my $EXCLUDE_LOCI_OVERLAP_CHECK = 0;
+
 &GetOptions ( 'h' => \$help_flag, 
               
               'fusion_preds=s' => \$fusion_preds_file,
@@ -66,6 +68,9 @@ my $genome_lib_dir = "";
               'genome_lib_dir=s' => \$genome_lib_dir,
 
               'debug|d' => \$DEBUG,
+              
+              'exclude_loci_overlap_check' => \$EXCLUDE_LOCI_OVERLAP_CHECK,
+
     );
 
 if (@ARGV) {
@@ -274,7 +279,9 @@ sub filter_remaining_promiscuous_fusions {
         
         print STDERR "Fusion: $geneA--$geneB, num_A_partners: $num_geneA_partners, num_B_partners: $num_geneB_partners\n" if $DEBUG;
         
-        if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
+        if ( (! $EXCLUDE_LOCI_OVERLAP_CHECK) # for testing
+             && 
+             &is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
 
             print STDERR "-looks potentially promiscuous, ressessing based on loci counting\n" if $DEBUG;
 

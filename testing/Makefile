@@ -1,4 +1,4 @@
-DIRS = blast_test  test_promiscuity test_full
+DIRS = blast_test  test_promiscuity test_full test_promiscuity_incl_gene_overlap
 
 test:
 	@for i in $(DIRS); do \

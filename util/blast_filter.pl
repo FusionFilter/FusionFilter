@@ -48,6 +48,9 @@ my $help_flag;
 my $fusion_preds_file;
 my $genome_lib_dir;
 
+my $EXCLUDE_LOCI_OVERLAP_CHECK = 0;
+
+
 &GetOptions ( 'h' => \$help_flag, 
               
               'fusion_preds=s' => \$fusion_preds_file,
@@ -56,6 +59,8 @@ my $genome_lib_dir;
                             
               'genome_lib_dir=s' => \$genome_lib_dir,
                             
+              'exclude_loci_overlap_check' => \$EXCLUDE_LOCI_OVERLAP_CHECK,
+              
     );
 
 
@@ -171,9 +176,11 @@ main: {
     
     my %already_approved;
 
-    my $gene_overlap_checker = new Gene_overlap_check("$genome_lib_dir/ref_annot.gtf.gene_spans");
-        
-
+    my $gene_overlap_checker;
+    unless ($EXCLUDE_LOCI_OVERLAP_CHECK) {
+        $gene_overlap_checker = new Gene_overlap_check("$genome_lib_dir/ref_annot.gtf.gene_spans");
+    }
+    
     foreach my $fusion (@fusions) {
         
         my $geneA = $fusion->{geneA};
@@ -203,7 +210,7 @@ main: {
                 if ($altB_href) {
                     foreach my $altB (keys %$altB_href) {
                         my @blast = &examine_seq_similarity($geneB, $altB);
-                        my $overlapping_genes_flag = $gene_overlap_checker->are_genes_overlapping($geneB, $altB);
+                        my $overlapping_genes_flag = ($EXCLUDE_LOCI_OVERLAP_CHECK) ? 0 : $gene_overlap_checker->are_genes_overlapping($geneB, $altB);
                         if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$geneA--$altB");
                             push (@blast_info, @blast);
@@ -215,7 +222,7 @@ main: {
                 if ($altA_href) {
                     foreach my $altA (keys %$altA_href) {
                         my @blast = &examine_seq_similarity($altA, $geneA);
-                        my $overlapping_genes_flag = $gene_overlap_checker->are_genes_overlapping($altA, $geneA);
+                        my $overlapping_genes_flag = ($EXCLUDE_LOCI_OVERLAP_CHECK) ? 0 : $gene_overlap_checker->are_genes_overlapping($altA, $geneA);
                         if (@blast && ! $overlapping_genes_flag) {
                             push (@blast, "ALREADY_EXAMINED:$altA--$geneB");
                             push (@blast_info, @blast);

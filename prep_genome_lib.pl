@@ -14,6 +14,9 @@ my $CPU = 4;
 
 my $max_readlength = 100;
 
+my $output_dir = "build_dir";
+
+
 my $usage = <<__EOUSAGE__;
 
 ##################################################################################
@@ -35,7 +38,7 @@ my $usage = <<__EOUSAGE__;
 #
 #  Misc options:
 #
-#  --output_dir <string>           output directory
+#  --output_dir <string>           output directory (default: $output_dir)
 #
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
@@ -71,7 +74,6 @@ my $genome_fa_file;
 my $cdna_fa_file;
 my $gtf_file;
 my $blast_pairs_file;
-my $output_dir;
 my $count_kmers;
 
 my $gmap_build_flag = 0;
@@ -105,14 +107,15 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $blast_pairs_file && $max_readlength) {
+unless ($genome_fa_file && $gtf_file && $max_readlength) {
     die $usage;
 }
 
-unless ($blast_pairs_file =~ /\.gz$/) {
-    die "Error, file $blast_pairs_file must be gzipped-compressed";
+if ($blast_pairs_file) {
+    unless ($blast_pairs_file =~ /\.gz$/) {
+        die "Error, file $blast_pairs_file must be gzipped-compressed";
+    }
 }
-
 
 $genome_fa_file = &Pipeliner::ensure_full_path($genome_fa_file) if $genome_fa_file;
 $cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file) if $cdna_fa_file;
@@ -197,10 +200,11 @@ main: {
     #######################
     # index the blast pairs
     
-    $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_blast_pairs.idx.ok"));
-
-
+    if ($blast_pairs_file) {
+        $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_blast_pairs.idx.ok"));
+    }
+    
 
 
     ############################################################

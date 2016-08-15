@@ -1,27 +1,32 @@
 # Instructions for computing approximate paralog clusters and simpler blast match clusters for annotating suspicious fusion calls.
 
+## blastn
 
-## Sort blast pairs
-
-    gunzip -c  blast_pairs.gene_syms.outfmt6.gz | sort -k4,4g -k3,3gr > blastn.outfmt6.grouped.geneSym.sorted
-
-
-## Pull just the top hits:
-
-    get_top_blast_pairs.pl blastn.outfmt6.grouped.geneSym.sorted > blastn.outfmt6.grouped.geneSym.sorted.top
+    blastn -query ref_annot.cdna -db ref_annot.cdna -max_target_seqs 1000 -outfmt 6 -evalue 1e-10 -num_threads 20 -word_size 11  >  blast_pairs.outfmt6
 
 
-## perform paralog-level clustering:
+## group segments
 
-    outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blastn.outfmt6.grouped.geneSym.sorted.top --min_pct_len 1 --min_per_id 90 --inflation_factor 5
+    outfmt6_add_percent_match_length.group_segments.pl  blast_pairs.outfmt6 ref_annot.cdna ref_annot.cdna > blast_pairs.outfmt6.grouped
 
-    ln -s dump.out.blastn.outfmt6.grouped.geneSym.sorted.top.minLEN_1_pct_len.minPID_90.abc.mci.I50  paralog_clusters.dat
+## replace with gene symbols
+
+    blast_outfmt6_replace_trans_id_w_gene_symbol.pl ref_annot.cdna blast_pairs.outfmt6.grouped > blast_pairs.outfmt6.grouped.genesym
 
 
-## perform simple 'nucleotide blast clusters'
+# sort by Evalue asc, per_id desc
+    
+    cat  blast_pairs.outfmt6.grouped.genesym | sort -k4,4g -k3,3gr  > blast_pairs.outfmt6.grouped.genesym.sorted
 
-    outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blastn.outfmt6.grouped.geneSym.sorted.top --min_pct_len 1 --min_per_id 60 --inflation_factor 5
 
-    ln -s dump.out.blastn.outfmt6.grouped.geneSym.sorted.top.minLEN_1_pct_len.minPID_60.abc.mci.I50 nuc_clusters.dat
+# get top match for each
+
+    get_top_blast_pairs.pl blast_pairs.outfmt6.grouped.genesym.sorted > blast_pairs.outfmt6.grouped.genesym.sorted.top
+
+# perform Markov clustering
+
+    outfmt6_add_percent_match_length.group_segments.to_Markov_Clustering.pl --outfmt6_grouped blast_pairs.outfmt6.grouped.genesym.sorted.top --min_pct_len 1 --min_per_id 90 --inflation_factor 5
+
+    ln -s dump.out.blast_pairs.outfmt6.grouped.genesym.sorted.top.minLEN_1_pct_len.minPID_90.abc.mci.I50 paralog_clusters.txt
 
 

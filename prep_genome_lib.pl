@@ -179,10 +179,10 @@ main: {
     
     unless (-e "$output_dir/ref_annot.gtf") {
 
-        my $new_gtf = "ref_annot.long_readthru_introns_removed.gtf";
+        my $new_gtf = "$gtf_file.long_readthru_introns_removed.gtf";
         $cmd = "$UTILDIR/remove_long_intron_readthru_transcripts.pl $gtf_file $LONG_INTRON_READTHRU > $new_gtf";
         $pipeliner->add_commands(new Command($cmd, "_long_intron_rthru_filter.ok"));
-    
+        
         $gtf_file = $new_gtf;
         
         $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";

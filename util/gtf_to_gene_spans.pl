@@ -18,6 +18,10 @@ main: {
         unless (/\w/) { next; }
         my @x = split(/\t/);
         my $chr = $x[0];
+        my $feat_type = $x[2];
+
+        unless ($feat_type eq 'exon') { next; }
+                
         my $lend = $x[3];
         my $rend = $x[4];
         my $orient = $x[6];

@@ -1,4 +1,4 @@
-DIRS = blast_test  test_promiscuity test_full test_promiscuity_incl_gene_overlap test_paralogs
+DIRS = blast_test  test_promiscuity test_full test_promiscuity_incl_gene_overlap test_paralogs test_long_readthru_intron_removal
 
 test:
 	@for i in $(DIRS); do \

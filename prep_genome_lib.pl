@@ -16,8 +16,6 @@ my $max_readlength = 100;
 
 my $output_dir = "build_dir";
 
-my $LONG_INTRON_READTHRU = 100000;
-
 my $usage = <<__EOUSAGE__;
 
 ##################################################################################
@@ -42,10 +40,6 @@ my $usage = <<__EOUSAGE__;
 #  --output_dir <string>           output directory (default: $output_dir)
 #
 #  --CPU <int>                     number of threads (defalt: $CPU)
-#
-#  --long_intron_readthru_filter <int>   long introns to examine as candidate readthru transcripts
-#                                        Isoforms identified as candidate readthrus are removed.
-#                                        (default: $LONG_INTRON_READTHRU)
 #
 #  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
 #
@@ -174,17 +168,10 @@ main: {
 
 
     ###############################
-    ## filter out long readthru introns
     ## and symlink the annotation file
     
     unless (-e "$output_dir/ref_annot.gtf") {
 
-        my $new_gtf = "$gtf_file.long_readthru_introns_removed.gtf";
-        $cmd = "$UTILDIR/remove_long_intron_readthru_transcripts.pl $gtf_file $LONG_INTRON_READTHRU > $new_gtf";
-        $pipeliner->add_commands(new Command($cmd, "_long_intron_rthru_filter.ok"));
-        
-        $gtf_file = $new_gtf;
-        
         $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
         $pipeliner->add_commands(new Command($cmd, "_ref_annot.gtf.ok"));
     }

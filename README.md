@@ -1,2 +1,3 @@
 # FusionFilter
-source code for FusionFilter
+
+see Wiki for documentation

@@ -39,6 +39,8 @@ my $usage = <<__EOUSAGE__;
 #
 #  --output_dir <string>           output directory (default: $output_dir)
 #
+#  --fusion_annot_lib <string>     fusion annotation library (key/val pairs, tab-delimited)
+#
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
 #  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
@@ -74,6 +76,7 @@ my $cdna_fa_file;
 my $gtf_file;
 my $blast_pairs_file;
 my $count_kmers;
+my $fusion_annot_lib;
 
 my $gmap_build_flag = 0;
 
@@ -99,6 +102,8 @@ my $gmap_build_flag = 0;
 
               # for discasm
               'gmap_build' => \$gmap_build_flag,
+    
+              'fusion_annot_lib=s' => \$fusion_annot_lib,
     );
 
 
@@ -121,6 +126,7 @@ $cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file) if $cdna_fa_file;
 $gtf_file = &Pipeliner::ensure_full_path($gtf_file) if $gtf_file;
 $blast_pairs_file = &Pipeliner::ensure_full_path($blast_pairs_file) if $blast_pairs_file;
 $output_dir = &Pipeliner::ensure_full_path($output_dir) if $output_dir;
+$fusion_annot_lib = &Pipeliner::ensure_full_path($fusion_annot_lib) if $fusion_annot_lib;
 
 my $UTILDIR = $FindBin::Bin . "/util";
 
@@ -191,8 +197,7 @@ main: {
             . " --sjdbGTFfile $gtf_file "
             . " --sjdbOverhang $max_readlength ";
     
-    $pipeliner->add_commands(new Command($cmd, "$star_index.ok"));
-
+    $pipeliner->add_commands(new Command($cmd, "$star_index/build.ok"));
 
     unless (-e "$output_dir/ref_annot.gtf.gene_spans") {
         $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
@@ -209,6 +214,15 @@ main: {
     }
     
 
+    ######################
+    # build the fusion annotation database
+    # 
+    $cmd = "$UTILDIR/build_fusion_annot_db_index.pl --gene_spans $output_dir/ref_annot.gtf.gene_spans --out_db_file $output_dir/fusion_annot_lib.idx";
+    if ($fusion_annot_lib) {
+        $cmd .= " --key_pairs $fusion_annot_lib";
+    }
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_fusion_annot_lib.idx.ok"));
+    
 
     ############################################################
     ## Sections below are optional depending on optional params

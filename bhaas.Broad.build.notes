@@ -18,17 +18,20 @@ fasta_acc_filter.pl chr.accs GRCh38.primary_assembly.genome.fa > ref_genome.fa
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/remove_long_intron_readthru_transcripts.pl gencode.v24.annotation.gtf 100000 > ref_annot.minus_readthrus.gtf
 
 
-
+##################################
 # create superloci for IGH and IGL
 
 cat ref_annot.minus_readthrus.gtf  | egrep 'IG_V_gene|IG_C_gene|IG_D_gene|IG_J_gene' | egrep ^chr14  > IGH_locus.gtf
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/make_super_locus.pl IGH_locus.gtf IGH@ IGH.g@ IGH.t@ > IGH.superlocus.gtf
 
+# add revcomp for IGH superlocus:
+cat IGH.superlocus.gtf | perl -lane 's/IGH/IGH-/g; print;'  | perl -lane '@x = split(/\t/); $x[6] = "+"; print join("\t", @x);' | tee  IGH.superlocus.revcomp.gtf
+
 cat ref_annot.minus_readthrus.gtf  | egrep 'IG_V_gene|IG_C_gene|IG_D_gene|IG_J_gene' | egrep ^chr22 > IGL_locus.gtf
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/make_super_locus.pl IGL_locus.gtf IGL@ IGL.g@ IGL.t@ > IGL.superlocus.gtf
 
 
-cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGL.superlocus.gtf > ref_annot.gtf
+cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGH.superlocus.revcomp.gtf IGL.superlocus.gtf > ref_annot.gtf
 
 
 ####

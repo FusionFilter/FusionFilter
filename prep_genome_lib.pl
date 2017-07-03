@@ -168,7 +168,7 @@ main: {
     my $cmd;
     
     unless (-e "$output_dir/ref_genome.fa") {
-        $cmd = "ln -s $genome_fa_file $output_dir/ref_genome.fa";
+        $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
         $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
     }
 
@@ -178,7 +178,7 @@ main: {
     
     unless (-e "$output_dir/ref_annot.gtf") {
 
-        $cmd = "ln -sf $gtf_file $output_dir/ref_annot.gtf";
+        $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
         $pipeliner->add_commands(new Command($cmd, "_ref_annot.gtf.ok"));
     }
     
@@ -247,7 +247,7 @@ main: {
         # Prep the cdna fasta file
         
         unless (-e "$output_dir/ref_cdna.fasta") {
-            $cmd = "ln -s $cdna_fa_file $output_dir/ref_cdna.fasta";
+            $cmd = "cp $cdna_fa_file $output_dir/ref_cdna.fasta";
             $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));
         }
                 

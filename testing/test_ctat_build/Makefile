@@ -7,3 +7,4 @@ clean:
 	rm -f ./_*ok
 	rm -rf ./build_dir
 	rm -f ./Log.out
+	rm -f ./ref_annot.long_readthru_introns_removed.gtf

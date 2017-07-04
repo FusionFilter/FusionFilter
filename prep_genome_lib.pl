@@ -201,7 +201,7 @@ main: {
 
     unless (-e "$output_dir/ref_annot.gtf.gene_spans") {
         $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
-        $pipeliner->add_commands(new Command($cmd, "ref_annot.gtf.gene_spans.ok") );
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_annot.gtf.gene_spans.ok") );
     }
     
 
@@ -214,6 +214,13 @@ main: {
     }
     
 
+    ####################################
+    ## integrate protein structure info
+    
+    $cmd = "$UTILDIR/build_prot_info_db.pl --gtf $gtf_file --genome_fa $genome_fa_file --out_prefix $output_dir/ref_annot";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/_prot_info_db.ok"));
+    
+    
     ######################
     # build the fusion annotation database
     # 

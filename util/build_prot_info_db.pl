@@ -12,15 +12,15 @@ use Process_cmd;
 
 my $usage = <<__EOUSAGE__;
 
-##########################################################################
+##############################################################################
 #
-#  --gtf <string>        : reference annotation for coding genes in gtf format
+#  --gtf <string>           : reference annotation for coding genes in gtf format
 #                                      
-#  --genome_fa <string>       : genome fasta file
+#  --genome_fa <string>     : genome fasta file
 #
-#  --out_db_dir <string>      : directory to store prot_info.db.idx
+#  --out_prefix <string>    : output prefix for .cds, .pep, and .prot_info.dbm
 #
-##########################################################################
+##############################################################################
 
 
  
@@ -32,34 +32,25 @@ __EOUSAGE__
 my $help_flag;
 my $gtf_file;
 my $genome_fa;
-my $out_db_dir;
+my $out_prefix;
 
 &GetOptions ( 'h' => \$help_flag,
               'gtf=s' => \$gtf_file,
               'genome_fa=s' => \$genome_fa,
-              'out_db_dir=s' => \$out_db_dir,
+              'out_prefix=s' => \$out_prefix,
     );
 
-unless ($gtf_file && $genome_fa && $out_db_dir) {
+unless ($gtf_file && $genome_fa && $out_prefix) {
     die $usage;
 }
 
 
 main: {
-
-    unless (-d $out_db_dir) {
-        &process_cmd("mkdir -p $out_db_dir");
-    }
-    my $prot_info_db_idx = "$out_db_dir/prot_info_db.idx";
-    if (-e $prot_info_db_idx) {
-        die "Error, $prot_info_db_idx already exists.  Please remove it or rename it before proceeding";
-    }
-
-    my $annot_manager = Annotation_manager->new($gtf_file, $genome_fa);
-
-    $annot_manager->build_prot_info_db($prot_info_db_idx);
     
-    
+    my $annot_manager = Annotation_manager->new($gtf_file, $genome_fa, $out_prefix);
+
+    $annot_manager->build_prot_info_db("$out_prefix.prot_info.dbm");
+        
     exit(0);
 }
 
@@ -78,7 +69,7 @@ use Carp;
 
 ####
 sub new {
-    my ($packagename, $gtf_file, $genome_fa) = @_;
+    my ($packagename, $gtf_file, $genome_fa, $out_prefix) = @_;
 
     my $self = {
         gene_to_CDS_features => {},  # gene_id -> cds_id -> cds_feature_obj
@@ -86,7 +77,7 @@ sub new {
     
     bless($self, $packagename);
 
-    $self->parse_GTF_instantiate_featureset($gtf_file, $genome_fa);
+    $self->parse_GTF_instantiate_featureset($gtf_file, $genome_fa, $out_prefix);
     
     return($self);
 }
@@ -140,36 +131,6 @@ sub toString {
     return ($text);
 }
     
-####
-sub add_cds_and_pfam {
-    my ($self) = shift;
-    my ($cds_seqs_href, $pfam_hits_href) = @_;
-    
-    
-    my @gene_ids = $self->get_gene_list();
-    
-    foreach my $gene_id (@gene_ids) {
-        my @cds_features = $self->get_CDS_features_for_gene($gene_id);
-        foreach my $cds_feature (@cds_features) {
-
-            my $cds_id = $cds_feature->{cds_id};
-            my $cds_seq = $cds_seqs_href->{$cds_id};
-            unless ($cds_seq) {
-                print STDERR "WARNING, no CDS sequence for $cds_id\n";
-                $cds_seq = "";
-            }
-            
-            $cds_feature->set_CDS_sequence($cds_seq);
-
-            my $pfam_hits = $pfam_hits_href->{$cds_id};
-            if (ref $pfam_hits) {
-                $cds_feature->add_pfam_hits(@$pfam_hits);
-            }
-        }
-    }
-
-    return;
-}
 
 ####
 sub build_prot_info_db {
@@ -204,8 +165,12 @@ sub build_prot_info_db {
 ####
 sub parse_GTF_instantiate_featureset {
     my ($self) = shift;
-    my ($gtf_file, $genome_fa) = @_;
+    my ($gtf_file, $genome_fa, $out_prefix) = @_;
 
+
+    open(my $pep_ofh, ">$out_prefix.pep") or croak "Error, cannot write to file: $out_prefix.pep";
+    open(my $cds_ofh, ">$out_prefix.cds") or croak "Error, cannot write to file: $out_prefix.cds"; 
+        
     my $gene_obj_indexer = {};
 
     ## associate gene identifiers with contig id's.
@@ -256,7 +221,11 @@ sub parse_GTF_instantiate_featureset {
                 my $orient = $isoform->get_orientation();
                 
                 my $cds_seq = $isoform->get_CDS_sequence();
+                my $prot_seq = $isoform->get_protein_sequence();
 
+                print $pep_ofh ">$isoform_id\n$prot_seq\n";
+                print $cds_ofh ">$isoform_id\n$cds_seq\n";
+                
                 my $cds_feature_obj = $self->get_CDS_feature($gene_id, $isoform_id);
                 
                 my @exons = $isoform->get_exons();

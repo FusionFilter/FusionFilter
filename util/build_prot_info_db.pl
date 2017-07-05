@@ -199,6 +199,8 @@ sub parse_GTF_instantiate_featureset {
 
     }
 
+    my $problem_isoform_counts = 0;
+    
     foreach my $asmbl_id (sort keys %contig_to_gene_list) {
 
         my $genome_seq = $genome{$asmbl_id} or croak "Error, no sequence stored for contig: $asmbl_id";
@@ -214,7 +216,14 @@ sub parse_GTF_instantiate_featureset {
 
                 unless ($isoform->is_coding_gene()) { next; }
 
-                $isoform->set_CDS_phases(\$genome_seq);
+                eval {
+                    $isoform->set_CDS_phases(\$genome_seq);
+                };
+                if ($@) {
+                    print STDERR $@;
+                    $problem_isoform_counts++;
+                    next;
+                }
                 
                 my $isoform_id = $isoform->{Model_feat_name};
                 my $gene_id = $isoform->{TU_feat_name};
@@ -244,6 +253,8 @@ sub parse_GTF_instantiate_featureset {
             }
         }
     }
+
+    print STDERR "\n\n\tCount of problem isoforms: $problem_isoform_counts\n\n\n";
     
     return;
 }

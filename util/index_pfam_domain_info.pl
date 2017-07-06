@@ -17,7 +17,7 @@ my $usage = <<__EOUSAGE__;
 
 ##########################################################################
 #
-#  --pfam_domains <string>    : pfam output
+#  --pfam_domains <string>    : pfam output  (ok if .gz)
 #
 #  --genome_lib_dir <string>  : CTAT genome lib directory
 #
@@ -48,7 +48,10 @@ unless ($pfam_domains_file && $genome_lib_dir) {
 main: {
 
     my %pfam_hits = &parse_pfam($pfam_domains_file);
-    
+
+
+
+    print STDERR "-building pfam dbm\n";
 
     my $tied_hash = new TiedHash( { create => "$genome_lib_dir/pfam_domains.dbm" } );
 
@@ -65,7 +68,8 @@ main: {
     }
 
     $tied_hash = undef; # closes it
-        
+
+    print STDERR "done.\n";
     
     exit(0);
 }
@@ -108,8 +112,15 @@ sub parse_pfam {
     print STDERR "-parsing $pfam_file\n";
     
     my %model_to_domains;
-    
-    open (my $fh, $pfam_file) or die "Error, cannot open file $pfam_file";
+
+    my $fh;
+    if ($pfam_file =~ /\.gz$/) {
+        open($fh, "gunzip -c $pfam_file | ") or die "Error, cannot open $pfam_file via gunzip -c";
+    }
+    else {
+        open ($fh, $pfam_file) or die "Error, cannot open file $pfam_file";
+    }
+
     while (<$fh>) {
         chomp;
         unless (/\w/) { next; }

@@ -53,3 +53,12 @@ blastn -query ref_annot.cdna.fa.masked -db ref_annot.cdna.fa.masked -max_target_
 # replace gene symbols for trans ids
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl ref_annot.cdna.fa.masked blast_pairs.outfmt6 | gzip > blast_pairs.gene_syms.outfmt6.gz
 
+
+### Pfam integration:
+
+hmmscan --cpu 4 --domtblout PFAM.domtblout.dat /seq/RNASEQ/DBs/PFAM/current/Pfam-A.hmm ref_annot.pep
+
+gzip PFAM.domtblout.dat
+
+FusionFilter/util/index_pfam_domain_info.pl --pfam_domains PFAM.domtblout.dat.gz --genome_lib_dir build_dir/
+

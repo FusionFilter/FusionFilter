@@ -14,7 +14,7 @@ my $CPU = 4;
 
 my $max_readlength = 150;
 
-my $output_dir = "build_dir";
+my $output_dir = "ctat_genome_lib_build_dir";
 
 my $usage = <<__EOUSAGE__;
 

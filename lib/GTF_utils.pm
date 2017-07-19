@@ -120,9 +120,14 @@ sub GTF_to_gene_objs {
 
         if ($type eq 'transcript' || $type eq 'gene') { next; } # capture by exon coordinates
 
-        $annot =~ /transcript_id \"([^\"]+)\"/  or confess "Error, cannot get transcript_id from $annot of line\n$_";
-        my $transcript_id = $1;
-
+        my $transcript_id;
+        if ($annot =~ /transcript_id \"([^\"]+)\"/) {
+            $transcript_id = $1;
+        }
+        else {
+            print STDERR "Skipping line: $_, no transcript_id value provided\n";
+            next;
+        }
         
         if ($type eq 'CDS' || $type eq 'stop_codon' || $type eq 'start_codon') {
             push (@{$gene_transcript_data{$seqname}->{$gene_id}->{$transcript_id}->{CDS}}, [$end5, $end3] );

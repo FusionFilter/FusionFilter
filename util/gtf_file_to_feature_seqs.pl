@@ -10,11 +10,15 @@ use GTF_utils;
 use Fasta_retriever;
 use Carp;
 
-my $usage = "\n\nusage: $0 gtf_file genome_db\n\n";
+my $usage = "\n\nusage: $0 gtf_file genome_db seqType=[cDNA|CDS|prot]\n\n";
 
 my $gtf_file = $ARGV[0] or die $usage;
 my $fasta_db = $ARGV[1] or die $usage;
+my $seqType = $ARGV[2] or die $usage;
 
+unless ($seqType =~ /^(cDNA|CDS|prot)$/) {
+    die "Error, don't recognize seqType: $seqType, must be: cDNA|CDS|prot  ";
+}
 
 
 my $gene_obj_indexer = {};
@@ -65,8 +69,20 @@ foreach my $asmbl_id (sort keys %contig_to_gene_list) {
             my $isoform_id = $isoform->{Model_feat_name};
             my $gene_id = $isoform->{TU_feat_name};
             
-            my $seq = $isoform->get_cDNA_sequence();
-                        
+            if (( ! $isoform->is_coding_gene()) && $seqType =~ /CDS|prot/) { next; }
+            
+            my $seq = "";
+            if ($seqType eq 'cDNA') {
+                $seq = $isoform->get_cDNA_sequence();
+            }
+            elsif ($seqType eq 'CDS') {
+                $seq = $isoform->get_CDS_sequence();
+            }
+            else {
+                # protein
+                $seq = $isoform->get_protein_sequence();
+            }
+            
             $seq =~ s/(\S{60})/$1\n/g; # make fasta format
             chomp $seq;
             

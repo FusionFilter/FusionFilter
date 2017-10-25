@@ -4,9 +4,9 @@ use strict;
 use warnings;
 use FindBin;
 use lib ("$FindBin::Bin/../lib");
-use TiedHash;
 use Carp;
-
+use Process_cmd;
+use DB_File;
 
 my $usage = "\n\n\tusage: $0 ctat_genome_lib_dir\n\n";
 
@@ -20,25 +20,35 @@ main: {
         die "Error, cannot locate file: $blast_idx";
     }
 
+    # make a dated copy of the original:
+    my $backup = $blast_idx . ".prev." . time();
+    print STDERR "-making a backup of the original index at: $backup\n";
+    &process_cmd("cp $blast_idx $backup");
+        
     my $gene_spans_file = "$ctat_genome_lib_dir/ref_annot.gtf.gene_spans";
     unless (-s $gene_spans_file) {
         die "Error, cannot locate file: $gene_spans_file";
     }
         
-    my $idx = new TiedHash( { 'use' => $blast_idx} );
+    my %idx;
+    
+    tie (%idx, 'DB_File', $blast_idx, O_RDWR, 0666, $DB_BTREE);
+    
 
     my %gene_to_span_info = &parse_gene_spans($gene_spans_file);
 
     my $counter = 0;
-    foreach my $gene_pair ($idx->get_keys()) {
+    foreach my $gene_pair (keys %idx) {
         $counter++;
         print STDERR "\r[$counter]   " if $counter % 100 == 0;
         my ($geneA, $geneB) = split(/--/, $gene_pair);
         if (&overlap($geneA, $geneB, \%gene_to_span_info)) {
-            print STDERR "-must prune: $geneA--$geneB\n";
+            print STDERR "-pruning: $gene_pair\n";
+            delete($idx{$gene_pair});
         }
     }
-
+    
+    untie(%idx);
         
     print STDERR "-done updating blast index\n\n";
     

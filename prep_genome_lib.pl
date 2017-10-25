@@ -25,7 +25,7 @@ my $usage = <<__EOUSAGE__;
 #  --genome_fa  <string>           genome fasta file
 #
 #  --gtf <string>                  transcript structure annotation
-#                                     Note: can restrict to coding genes
+#                                     Note: can restrict to coding genes and lncRNAs
 #
 #  --blast_pairs <string>          transcript blastn results 
 #                                  in BLAST+ '-outfmt 6'  format and gzipped!

@@ -164,12 +164,17 @@ main: {
     unless (-d $output_dir) {
         mkpath($output_dir) or die "Error, cannot mkpath $output_dir";
     }
+    my $checkpoints_dir = "$output_dir/__checkpoints";
+    unless (-d $checkpoints_dir) {
+        mkpath($checkpoints_dir);
+    }
+    
     
     my $cmd;
     
     unless (-e "$output_dir/ref_genome.fa") {
         $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_genome.fa.ok"));
     }
 
 
@@ -179,7 +184,7 @@ main: {
     unless (-e "$output_dir/ref_annot.gtf") {
 
         $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
-        $pipeliner->add_commands(new Command($cmd, "_ref_annot.gtf.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.ok"));
     }
     
         
@@ -201,7 +206,7 @@ main: {
 
     unless (-e "$output_dir/ref_annot.gtf.gene_spans") {
         $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_annot.gtf.gene_spans.ok") );
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.gene_spans.ok") );
     }
     
 
@@ -210,7 +215,11 @@ main: {
     
     if ($blast_pairs_file) {
         $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_blast_pairs.idx.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_blast_pairs.idx.ok"));
+
+        # remove blast pairs between genes that physically overlap on the genome
+        $cmd = "$UTILDIR/index_blast_pairs.remove_overlapping_genes.pl $output_dir";
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_prune_blast_pairs_overlapping_genes.ok"));
     }
     
 
@@ -218,7 +227,7 @@ main: {
     ## integrate protein structure info
     
     $cmd = "$UTILDIR/build_prot_info_db.pl --gtf $gtf_file --genome_fa $genome_fa_file --out_prefix $output_dir/ref_annot";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_prot_info_db.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_prot_info_db.ok"));
     
     
     ######################
@@ -228,7 +237,7 @@ main: {
     if ($fusion_annot_lib) {
         $cmd .= " --key_pairs $fusion_annot_lib";
     }
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/_fusion_annot_lib.idx.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_fusion_annot_lib.idx.ok"));
     
 
     ############################################################
@@ -241,7 +250,7 @@ main: {
         # build GMAP genome index
         
         $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_genome.fa.gmap.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_genome.fa.gmap.ok"));
     }
     
     if ($cdna_fa_file) {
@@ -255,28 +264,28 @@ main: {
         
         unless (-e "$output_dir/ref_cdna.fasta") {
             $cmd = "cp $cdna_fa_file $output_dir/ref_cdna.fasta";
-            $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.ok"));
+            $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.ok"));
         }
                 
         # index the fasta file
         $cmd = "$UTILDIR/index_cdna_seqs.pl $output_dir/ref_cdna.fasta";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.idx.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.idx.ok"));
         
         # build the bowtie index:
         $cmd = "bowtie-build $output_dir/ref_cdna.fasta $output_dir/ref_cdna.fasta";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_ref_cdna.fasta.bowtie_idx.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.bowtie_idx.ok"));
         
     }
                 
     if ($count_kmers) {
         my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.count.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.count.ok"));
 
         $cmd = "jellyfish dump -L 2 mer_counts.jf > $output_dir/ref_genome.jf.min2.kmers";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.dump.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.dump.ok"));
 
         $cmd = "rm mer_counts.jf";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/_jf.cleanup.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.cleanup.ok"));
         
     }
     

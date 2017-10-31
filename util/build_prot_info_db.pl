@@ -394,9 +394,8 @@ sub refine {
     my $sum_segs_len = $initial_seg_phase;
     foreach my $segment (@segments) {
 
-        my $seg_len = $segment->{rend} - $segment->{lend} + 1;
         my $phase_beg = $sum_segs_len % 3;
-        
+        my $seg_len = $segment->{rend} - $segment->{lend} + 1;
         
         my $rel_lend = $sum_segs_len + 1 - $initial_seg_phase;
         my $rel_rend = $sum_segs_len + $seg_len - $initial_seg_phase;

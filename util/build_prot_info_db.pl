@@ -380,22 +380,32 @@ sub refine {
         @segments = reverse @segments;
     }
 
-    my $sum_segs_len = 0;
+    
+    my $initial_seg_phase = $segments[0]->{phase_beg};
+    # redefine since I want to use a simpler phase definition here: codon pos % 3 starting from zero.
+    if ($initial_seg_phase == 1) {
+        $initial_seg_phase = 2;
+    }
+    elsif ($initial_seg_phase == 2) {
+        $initial_seg_phase = 1;
+    }
+    
+    
+    my $sum_segs_len = $initial_seg_phase;
     foreach my $segment (@segments) {
 
         my $seg_len = $segment->{rend} - $segment->{lend} + 1;
-        my $phase_beg = $segment->{phase_beg};
-
-
+        my $phase_beg = $sum_segs_len % 3;
         
-        my $rel_lend = $sum_segs_len + 1;
-        my $rel_rend = $sum_segs_len + $seg_len;
-
+        
+        my $rel_lend = $sum_segs_len + 1 - $initial_seg_phase;
+        my $rel_rend = $sum_segs_len + $seg_len - $initial_seg_phase;
+        
         my $phase_end = ".";
         if ($phase_beg ne ".") {
             my $adj_seg_len = $seg_len;
             $adj_seg_len += $phase_beg;
-        
+            
             $phase_end = ($adj_seg_len -1)  % 3;
         }
         

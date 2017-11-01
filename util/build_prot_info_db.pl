@@ -405,7 +405,7 @@ sub refine {
             my $adj_seg_len = $seg_len;
             $adj_seg_len += $phase_beg;
             
-            $phase_end = ($adj_seg_len -1)  % 3;
+            $phase_end = $adj_seg_len  % 3;
         }
         
         $segment->{rel_lend} = $rel_lend;

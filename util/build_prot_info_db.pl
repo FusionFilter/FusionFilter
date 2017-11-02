@@ -391,28 +391,26 @@ sub refine {
     }
     
     
-    my $sum_segs_len = $initial_seg_phase;
+    my $sum_segs_len = 0;
+    my $prev_seg_phase = $initial_seg_phase;
     foreach my $segment (@segments) {
 
-        my $phase_beg = $sum_segs_len % 3;
+        my $phase_beg = $prev_seg_phase;
         my $seg_len = $segment->{rend} - $segment->{lend} + 1;
         
-        my $rel_lend = $sum_segs_len + 1 - $initial_seg_phase;
-        my $rel_rend = $sum_segs_len + $seg_len - $initial_seg_phase;
+        my $rel_lend = $sum_segs_len + 1;
+        my $rel_rend = $sum_segs_len + $seg_len;
         
-        my $phase_end = ".";
-        if ($phase_beg ne ".") {
-            my $adj_seg_len = $seg_len;
-            $adj_seg_len += $phase_beg;
-            # 012 012 012
-            $phase_end = ($adj_seg_len -1)  % 3;
-        }
-        
+        # 012 012 012
+        my $phase_end = ($phase_beg + $seg_len -1)  % 3;
+           
+        $segment->{phase_beg} = $phase_beg;
         $segment->{rel_lend} = $rel_lend;
         $segment->{rel_rend} = $rel_rend;
         $segment->{phase_end} = $phase_end;
         
         $sum_segs_len += $seg_len;
+        $prev_seg_phase = ($phase_end + 1) % 3;
     
     }
 

@@ -200,13 +200,15 @@ sub remove_promiscuous_fusions {
         print STDERR "After filtering proms low pct dom: " . Dumper(\@filtered_fusions);
     }
 
+
+    ## --removing step of arbitrary filtering of promiscuous fusions.
     
-    @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
-    
-    
-    if ($DEBUG) {
-        print STDERR "After removing remaining promiscuous fusions: " . Dumper(\@filtered_fusions);
-    }
+    #@filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
+    #
+    #
+    #if ($DEBUG) {
+    #    print STDERR "After removing remaining promiscuous fusions: " . Dumper(\@filtered_fusions);
+    #}
     
     return(@filtered_fusions);
 }

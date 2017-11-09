@@ -111,7 +111,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $max_readlength) {
+unless ($genome_fa_file && $gtf_file && $max_readlength && $blast_pairs) {
     die $usage;
 }
 

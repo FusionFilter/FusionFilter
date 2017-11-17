@@ -85,10 +85,23 @@ sub parse_gene_spans {
 sub overlap {
     my ($geneA, $geneB, $gene_to_span_info_href) = @_;
 
+    
+    
     my $geneA_info_aref = $gene_to_span_info_href->{$geneA};
-    my ($chr_A, $lend_A, $rend_A) = @$geneA_info_aref;
 
+    unless ($geneA_info_aref) {
+        print STDERR "-warning, no record of gene span for: $geneA, skipping pair($geneA,$geneB)\n";
+        return(0);
+    }
+    
     my $geneB_info_aref = $gene_to_span_info_href->{$geneB};
+    unless ($geneB_info_aref) {
+        print STDERR "-warning, no record of gene span for: $geneB, skipping pair($geneA,$geneB)\n";
+        return(0);
+    }
+        
+    my ($chr_A, $lend_A, $rend_A) = @$geneA_info_aref;
+        
     my ($chr_B, $lend_B, $rend_B) = @$geneB_info_aref;
 
     if ($chr_A eq $chr_B

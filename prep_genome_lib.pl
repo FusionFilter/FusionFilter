@@ -111,7 +111,7 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $max_readlength && $blast_pairs) {
+unless ($genome_fa_file && $gtf_file && $max_readlength && $blast_pairs_file) {
     die $usage;
 }
 
@@ -177,14 +177,22 @@ main: {
         $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_genome.fa.ok"));
     }
 
-
+    
     ###############################
-    ## and symlink the annotation file
+    ## and copy the annotation file
     
     unless (-e "$output_dir/ref_annot.gtf") {
 
         $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
         $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.ok"));
+    }
+
+    unless (-e "$output_dir/ref_annot.gtf.sorted.gz.tbi") {
+        $cmd = "bash -c \" set -eof pipefail; sort -k1,1 -k4,4g -k5,5g $output_dir/ref_annot.gtf |  bgzip > $output_dir/ref_annot.gtf.sorted.gz\" ";
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_sort_ref_annot_gtf_bgzip.ok"));
+    
+        $cmd = "tabix -p gff $output_dir/ref_annot.gtf.sorted.gz";
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_tabix_gff.ok"));
     }
     
         

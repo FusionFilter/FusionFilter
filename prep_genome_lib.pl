@@ -186,13 +186,11 @@ main: {
         $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
         $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.ok"));
     }
-
-    unless (-e "$output_dir/ref_annot.gtf.sorted.gz.tbi") {
-        $cmd = "bash -c \" set -eof pipefail; sort -k1,1 -k4,4g -k5,5g $output_dir/ref_annot.gtf |  bgzip > $output_dir/ref_annot.gtf.sorted.gz\" ";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_sort_ref_annot_gtf_bgzip.ok"));
     
-        $cmd = "tabix -p gff $output_dir/ref_annot.gtf.sorted.gz";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_tabix_gff.ok"));
+    unless (-e "$output_dir/ref_annot.gtf.mini.sortu") {
+        $cmd = "bash -c \" set -eof pipefail; $UTILDIR/gtf_to_exon_gene_records.pl $output_dir/ref_annot.gtf  | sort -k 1,1 -k4,4g -k5,5g -u > $output_dir/ref_annot.gtf.mini.sortu \" ";
+        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_sort_ref_annot_gtf_mini.ok"));
+        
     }
     
         

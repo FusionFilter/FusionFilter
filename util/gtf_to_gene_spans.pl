@@ -10,7 +10,7 @@ my $annots_gtf = $ARGV[0] or die $usage;
 main: {
 
     my %data;
-
+    
     open (my $fh, $annots_gtf) or die "Error, cannot open file $annots_gtf";
     while (<$fh>) {
         if (/^\#/) { next; }
@@ -35,14 +35,17 @@ main: {
         if ($info =~ /gene_name \"([^\"]+)\"/) {
             $gene_name = $1;
         }
-        
-        
 
+        my $gene_type = "";
+        if ($info =~ /gene_type \"([^\"]+)\"/) {
+            $gene_type = $1;
+        }
+        
         push (@{$data{$gene_id}->{coords}}, $lend, $rend);
         $data{$gene_id}->{chr} = $chr;
         $data{$gene_id}->{orient} = $orient;
-        $data{$gene_id}->{gene_name} = $gene_name;
-        
+        $data{$gene_id}->{gene_name} = $gene_name if $gene_name;
+        $data{$gene_id}->{gene_type} = $gene_type if $gene_type;
     }
     close $fh;
 
@@ -57,10 +60,11 @@ main: {
         my $lend = shift @coords;
         my $rend = pop @coords;
         my $gene_name = $data{$gene}->{gene_name} || ".";
-
-        print join("\t", $gene, $chr, $lend, $rend, $orient, $gene_name) . "\n";
+        my $gene_type = $data{$gene}->{gene_type} || ".";
+        
+        print join("\t", $gene, $chr, $lend, $rend, $orient, $gene_name, $gene_type) . "\n";
     }
-
+    
     exit(0);
 }
 

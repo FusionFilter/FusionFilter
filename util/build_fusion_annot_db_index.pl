@@ -58,14 +58,17 @@ main: {
     open(my $fh, $gene_spans_file) or die "Error, cannot open file: $gene_spans_file";
     while (<$fh>) {
         chomp;
-        my ($gene_id, $chr, $lend, $rend, $orient, $gene_name, $annotation_txt) = split(/\t/);
+        my ($gene_id, $chr, $lend, $rend, $orient, $gene_name, $gene_type) = split(/\t/);
         if ($gene_name && $gene_name ne ".") {
             $gene_id = $gene_name;
         }
 
         $idx->store_key_value("$gene_id$;COORDS", "$chr:$lend-$rend:$orient"); # hacky way of specifying coordinate info for direct coordinate info lookups.
-        if ($annotation_txt) {
-            $idx->store_key_value($gene_id, $annotation_txt);
+        if ($gene_type) {
+            unless($idx->get_value($gene_id)) {
+                # store at least the gene type info for the annotation string.
+                $idx->store_key_value($gene_id, $gene_type);
+            }
         }
     }
     close $fh;

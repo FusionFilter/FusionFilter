@@ -8,7 +8,7 @@ use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);
 
 my $Evalue = 1e-3;
 
-my $MAX_PROMISCUITY = 3;  # perhaps a poor choice of words, but still a best fit IMHO.
+my $MAX_PROMISCUITY = 10;  # perhaps a poor choice of words, but still a best fit IMHO.
 my $MIN_PCT_DOM_PROM = 20;
 
 my $usage = <<__EOUSAGE__;

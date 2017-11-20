@@ -10,7 +10,7 @@ use List::Util qw(max);
 use lib ("$FindBin::Bin/../lib");
 use Gene_overlap_check;
 
-my $MAX_PROMISCUITY = 3;  # perhaps a poor choice of words, but still a best fit IMHO.
+my $MAX_PROMISCUITY = 10;
 my $MIN_PCT_DOM_PROM = 20;
 
 my $usage = <<__EOUSAGE__;
@@ -201,14 +201,12 @@ sub remove_promiscuous_fusions {
     }
 
 
-    ## --removing step of arbitrary filtering of promiscuous fusions.
+    @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
     
-    #@filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
-    #
-    #
-    #if ($DEBUG) {
-    #    print STDERR "After removing remaining promiscuous fusions: " . Dumper(\@filtered_fusions);
-    #}
+    
+    if ($DEBUG) {
+        print STDERR "After removing remaining promiscuous fusions: " . Dumper(\@filtered_fusions);
+    }
     
     return(@filtered_fusions);
 }

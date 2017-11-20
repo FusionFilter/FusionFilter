@@ -11,8 +11,6 @@ use Data::Dumper;
 use Gene_overlap_check;
 
 
-my $Evalue = 1e-3;
-
 my $usage = <<__EOUSAGE__;
 
 ###################################################################################################
@@ -25,10 +23,6 @@ my $usage = <<__EOUSAGE__;
 #
 #  --genome_lib_dir <string>      genome lib directory
 #
-#
-# Optional: 
-##
-#  -E <float>                     E-value threshold for blast searches (default: $Evalue)
 #
 ####################################################################################################
 
@@ -55,8 +49,6 @@ my $EXCLUDE_LOCI_OVERLAP_CHECK = 0;
               
               'fusion_preds=s' => \$fusion_preds_file,
               
-              'E=f' => \$Evalue,
-                            
               'genome_lib_dir=s' => \$genome_lib_dir,
                             
               'exclude_loci_overlap_check' => \$EXCLUDE_LOCI_OVERLAP_CHECK,

@@ -6,8 +6,6 @@ use Carp;
 use FindBin;
 use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);                                                 
 
-my $Evalue = 1e-3;
-
 my $MAX_PROMISCUITY = 10;  # perhaps a poor choice of words, but still a best fit IMHO.
 my $MIN_PCT_DOM_PROM = 20;
 
@@ -28,7 +26,6 @@ my $usage = <<__EOUSAGE__;
 #
 # Optional: 
 ##
-#  -E <float>                     E-value threshold for blast searches (default: $Evalue)
 #
 #  --max_promiscuity <int>               maximum number of partners allowed for a given fusion. Default: $MAX_PROMISCUITY
 #
@@ -57,8 +54,6 @@ my $EXCLUDE_LOCI_OVERLAP_CHECK = 0;
               
               'out_prefix=s' => \$out_prefix,
 
-              'E=f' => \$Evalue,
-              
               'max_promiscuity=i' => \$MAX_PROMISCUITY,
 
               'min_pct_dom_promiscuity=i' => \$MIN_PCT_DOM_PROM,
@@ -107,7 +102,7 @@ main: {
 
     ## run blast filter
     
-    my $cmd = "$UTILDIR/blast_filter.pl --fusion_preds $fusion_preds_file -E $Evalue --genome_lib_dir $genome_lib_dir";
+    my $cmd = "$UTILDIR/blast_filter.pl --fusion_preds $fusion_preds_file --genome_lib_dir $genome_lib_dir";
     if ($EXCLUDE_LOCI_OVERLAP_CHECK) {
         $cmd .= " --exclude_loci_overlap_check";
     }

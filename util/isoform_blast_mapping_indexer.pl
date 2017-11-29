@@ -66,6 +66,10 @@ main: {
     chomp $num_blast_hits;
 
 
+    my $converted_genomic_coords_file = "$out_prefix.outfmt6plusGenomic";
+    open(my $ofh, ">$converted_genomic_coords_file") or die "Error, cannot write to file: $converted_genomic_coords_file";
+    
+
     my $counter = 0;
     while (<$fh>) {
 
@@ -76,6 +80,9 @@ main: {
         }
         
         chomp;
+        
+        my $line = $_;
+        
         my @x = split(/\t/);
         my $isoform_A = $x[0];
         my $isoform_B = $x[1];
@@ -102,12 +109,12 @@ main: {
 
         my $chr_A = $struct_A->{chr};
         my $chr_B = $struct_B->{chr};
-
-        #print join("\t", 
-        #           $gene_A, $chr_A, $genome_A_lend, $genome_A_rend,
-        #           $gene_B, $chr_B, $genome_B_lend, $genome_B_rend) . "\n";
-
         
+        print $ofh join("\t", $line, 
+                        $gene_A, $chr_A, $genome_A_lend, $genome_A_rend,
+                        $gene_B, $chr_B, $genome_B_lend, $genome_B_rend) . "\n";
+
+                
         if ($gene_A gt $gene_B) {
 
             # swap everything for simplicity
@@ -126,14 +133,20 @@ main: {
         push (@{$gene_pair_to_coordsets{$gene_pair}->{A_coords}}, [$genome_A_lend, $genome_A_rend]);
         push (@{$gene_pair_to_coordsets{$gene_pair}->{B_coords}}, [$genome_B_lend, $genome_B_rend]);
         
+        
+        
+        
     }
 
     close $fh;
-
+    close $ofh;
+    
     print STDERR "\n\n-done parsing blast results.\n\n-now reorganizing info.\n";
     
     ## now summarize and store results.
 
+    my $genome_collapsed_coords_file = "$out_prefix.align_coords.dat";
+    open($ofh, ">$genome_collapsed_coords_file") or die "Error, cannot write to file: $genome_collapsed_coords_file";
     my $idx = new TiedHash( { create => "$out_prefix.align_coords.dbm" } );
     
     foreach my $gene_pair (keys %gene_pair_to_coordsets) {
@@ -160,11 +173,14 @@ main: {
         # print "$json\n";
 
         $idx->store_key_value($gene_pair, $json);
+
+        print $ofh join("\t", $gene_A, &encode_json(\@A_ranges), $gene_B, &encode_json(\@B_ranges)) . "\n";
         
     }
+    close $ofh;
     
     print STDERR "-done\n";
-
+    
         
     exit(0);
 }

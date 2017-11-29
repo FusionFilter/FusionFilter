@@ -30,6 +30,10 @@ main: {
         print STDERR "-processing blast pairs from: $blast_pairs\n";
         
         open (my $fh, "<:gzip", $blast_pairs) or die "Error, cannot read $blast_pairs  ";
+
+        my $total_linecount = `gunzip -c $blast_pairs | wc -l `;
+        chomp $total_linecount;
+        $total_linecount = int($total_linecount);
         
         while (<$fh>) {
             chomp;

@@ -65,6 +65,9 @@ blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 100
 
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl  ref_annot.cdsplus.fa ref_annot.cdsplus.allvsall.outfmt6 > ref_annot.cdsplus.allvsall.outfmt6.genesym
 
+~/GITHUB/CTAT_FUSIONS/FusionFilter/util/index_blast_pairs.pl ctat_genome_lib_build_dir/blast_pairs.idx blast_pairs.gene_syms.outfmt6.gz ref_annot.cdsplus.allvsall.outfmt6.genesym.gz
+
+~/GITHUB/CTAT_FUSIONS/FusionFilter/util/index_blast_pairs.remove_overlapping_genes.pl $CTAT_GENOME_LIB
 
 ### Pfam integration:
 

@@ -54,6 +54,18 @@ blastn -query ref_annot.cdna.fa.masked -db ref_annot.cdna.fa.masked -max_target_
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl ref_annot.cdna.fa.masked blast_pairs.outfmt6 | gzip > blast_pairs.gene_syms.outfmt6.gz
 
 
+############################################################################################################
+#### include additional blast search among coding (excl. utr)  sequences and ncRNAs, not using repeatmasking
+
+~/GITHUB/CTAT_FUSIONS/FusionFilter/util/gtf_file_to_cDNA_seqs.pl ref_annot.gtf ref_genome.fa CDSplus > ref_annot.cdsplus.fa
+
+makeblastdb -in ref_annot.cdsplus.fa -dbtype nucl
+
+blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads 10  > ref_annot.cdsplus.allvsall.outfmt6
+
+~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl  ref_annot.cdsplus.fa ref_annot.cdsplus.allvsall.outfmt6 > ref_annot.cdsplus.allvsall.outfmt6.genesym
+
+
 ### Pfam integration:
 
 hmmscan --cpu 4 --domtblout PFAM.domtblout.dat /seq/RNASEQ/DBs/PFAM/current/Pfam-A.hmm ref_annot.pep

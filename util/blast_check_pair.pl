@@ -27,6 +27,14 @@ else {
     die "Error: cannot locate $blast_pairs_idx_file";
 }
 
+my $BLAST_ALIGNS_IDX;
+my $blast_aligns_idx_file = "$genome_lib_dir/blast.nomask.align_coords.dbm";
+if (-s $blast_aligns_idx_file) {
+    $BLAST_ALIGNS_IDX = new TiedHash( { use => $blast_aligns_idx_file } );
+}
+else {
+    die "Error, cannot locate $blast_aligns_idx_file";
+}
 
 
 my @blast_info = &examine_seq_similarity($geneA, $geneB);
@@ -34,9 +42,19 @@ if (@blast_info) {
     print "@blast_info\n";
 }
 else {
-    print "no hits.\n";
-    
+    print "no homology in unmasked regions.\n";
 }
+
+my $gene_pair_token = join("--", sort ($geneA, $geneB));
+my $alignments = $BLAST_ALIGNS_IDX->get_value($gene_pair_token);
+if ($alignments) {
+    print $alignments;
+}
+else {
+    print "no alignments.\n";
+}
+
+
 
 exit(0);
 

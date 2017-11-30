@@ -27,8 +27,8 @@ my $usage = <<__EOUSAGE__;
 #  --ref_cdna <string>            reference cDNA sequences fasta file (generated specially based on gtf -see docs) 
 #                                 (default: $cdna_fasta_file)
 #
-#  --blast_opts <string>          any blast options ie. ("-outfmt 6 -evalue 1e-3 -max_target_seqs 1 -lcase_masking ....")
-#
+#  --blast_opts <string>          any blast options ie. ("-outfmt 6 -evalue 1e-3 -wordsize 11 -max_target_seqs 1 -lcase_masking ....")
+#                                                         -soft_masking false
 #
 ####################################################################################################
 

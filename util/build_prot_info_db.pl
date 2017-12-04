@@ -153,6 +153,12 @@ sub build_prot_info_db {
         my $json = $coder->pretty->encode(\@cds_features);
 
         $tied_hash->store_key_value($gene_id_store, $json);
+        print STDERR "-storing $gene_id_store\n";
+        if (my $gene_name = $cds_features[0]->{gene_name}) {
+            # for backwards compatibility
+            $tied_hash->store_key_value($gene_name, $json);
+            print STDERR "\t-also storing $gene_name\n";
+        }
     }
     
     $tied_hash = undef; # closes it.
@@ -236,7 +242,10 @@ sub parse_GTF_instantiate_featureset {
                 print $cds_ofh ">$isoform_id\n$cds_seq\n";
                 
                 my $cds_feature_obj = $self->get_CDS_feature($gene_id, $isoform_id);
-                
+                if (my $gene_name = $isoform->{gene_name}) {
+                    $cds_feature_obj->{gene_name} = $gene_name;
+                }
+                                
                 my @exons = $isoform->get_exons();
                 foreach my $exon (@exons) {
                     if (my $cds_obj = $exon->get_CDS_obj()) {
@@ -317,6 +326,8 @@ sub new {
 
         pfam_hits => [],
 
+        gene_name => "",
+        
         cds_seq => "",
         
         

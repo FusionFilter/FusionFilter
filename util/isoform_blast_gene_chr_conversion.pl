@@ -60,7 +60,8 @@ main: {
     my $num_blast_hits = `cat $blast_file | wc -l`;
     chomp $num_blast_hits;
 
-
+    print STDERR "-num alignments: $num_blast_hits\n";
+    
     my $counter = 0;
     while (<$fh>) {
 
@@ -117,7 +118,7 @@ main: {
                 
         }
 
-        print join("\t", $line, 
+        print join("\t",
                    $isoform_A, $gene_A, $chr_A, $genome_A_lend, $genome_A_rend,
                    $isoform_B, $gene_B, $chr_B, $genome_B_lend, $genome_B_rend,
                    $per_id, $E_value) . "\n";

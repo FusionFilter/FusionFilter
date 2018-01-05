@@ -11,6 +11,7 @@ use Cwd;
 use File::Path;
 
 my $CPU = 4;
+my $outTmpDir=undef;
 
 my $max_readlength = 150;
 
@@ -44,6 +45,8 @@ my $usage = <<__EOUSAGE__;
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
 #  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
+# 
+#  --outTmpDir	<string>	   passed to STAR (very useful if local disks are faster than network disks)
 #
 ##################################################################################
 
@@ -95,6 +98,7 @@ my $gmap_build_flag = 0;
               # optional
               'output_dir=s' => \$output_dir,
               'CPU=i' => \$CPU,
+              'outTmpDir=s' => \$outTmpDir,
     
               # required for FusionInspector w/ gsnap and/or hisat
               'count_kmers' => \$count_kmers,
@@ -200,8 +204,9 @@ main: {
         mkpath $star_index or die "Error, cannot mkdir $star_index";
     }
 
-    
-    $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index "
+    my $maybe_tmpdir= defined($outTmpDir)? " --outTmpDir $outTmpDir " : "";
+
+    $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index $maybe_tmpdir "
             . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
             . " --genomeChrBinNbits 16 " # needed for >4k contigs w/ FI

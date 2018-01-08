@@ -225,7 +225,7 @@ main: {
     # index the blast pairs
     
     if ($blast_pairs_file) {
-        $cmd = "$UTILDIR/index_blast_pairs.pl $blast_pairs_file $output_dir/blast_pairs.idx";
+        $cmd = "$UTILDIR/index_blast_pairs.pl $output_dir/blast_pairs.idx $blast_pairs_file ";
         $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_blast_pairs.idx.ok"));
 
         # remove blast pairs between genes that physically overlap on the genome

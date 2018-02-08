@@ -28,10 +28,6 @@ my $usage = <<__EOUSAGE__;
 #  --gtf <string>                  transcript structure annotation
 #                                     Note: can restrict to coding genes and lncRNAs
 #
-#  --blast_pairs <string>          transcript blastn results 
-#                                  in BLAST+ '-outfmt 6'  format and gzipped!
-#                                     Note: gene symbols must replace transcript IDs.
-#
 # Required by STAR
 #
 #  --max_readlength <int>          max length for an individual RNA-Seq read (ie. default: $max_readlength)
@@ -57,28 +53,9 @@ __EOUSAGE__
 
 
 
-=advanced_usage
-
-#  Experimental - when using FusionInspector with GSNAP and/or HISAT
-#
-#  --count_kmers                   flag to include additional build steps required by count_kmers
-#                                     (requires 'jellyfish' software exist in your PATH setting)
-#
-#  --cdna_fa <string>              cdna fasta file
-#                                     Note: header format must be:
-#                                     transcript_id(tab)gene_id(tab)gene_symbol
-#                                  (requires bowtie(v1)-build in PATH setting)
-#
-
-
-=cut
-
 my $help_flag;
 my $genome_fa_file;
-my $cdna_fa_file;
 my $gtf_file;
-my $blast_pairs_file;
-my $count_kmers;
 my $fusion_annot_lib;
 
 my $gmap_build_flag = 0;
@@ -88,10 +65,7 @@ my $gmap_build_flag = 0;
               # required for STAR-Fusion, FusionInspector, GMAP-fusion
               'genome_fa=s' => \$genome_fa_file,
               'gtf=s' => \$gtf_file,        
-              
-              # required for STAR-Fusion, FusionInspector, and GMAP-Fusion
-              'blast_pairs=s' => \$blast_pairs_file,
-
+            
               # required for star
               'max_readlength=i' => \$max_readlength,
               
@@ -100,10 +74,6 @@ my $gmap_build_flag = 0;
               'CPU=i' => \$CPU,
               'outTmpDir=s' => \$outTmpDir,
     
-              # required for FusionInspector w/ gsnap and/or hisat
-              'count_kmers' => \$count_kmers,
-              'cdna_fa=s' => \$cdna_fa_file,
-
               # for discasm
               'gmap_build' => \$gmap_build_flag,
     
@@ -115,20 +85,20 @@ if ($help_flag) {
     die $usage;
 }
 
-unless ($genome_fa_file && $gtf_file && $max_readlength && $blast_pairs_file) {
+unless ($genome_fa_file && $gtf_file && $max_readlength) {
     die $usage;
 }
 
-if ($blast_pairs_file) {
-    unless ($blast_pairs_file =~ /\.gz$/) {
-        die "Error, file $blast_pairs_file must be gzipped-compressed";
-    }
+my @required_tools = ("STAR", "makeblastdb", "blastn");
+if ($gmap_build_flag) {
+    push (@required_tools, "gmap_build");
 }
 
+&check_for_required_tools(@required_tools);
+
+
 $genome_fa_file = &Pipeliner::ensure_full_path($genome_fa_file) if $genome_fa_file;
-$cdna_fa_file = &Pipeliner::ensure_full_path($cdna_fa_file) if $cdna_fa_file;
 $gtf_file = &Pipeliner::ensure_full_path($gtf_file) if $gtf_file;
-$blast_pairs_file = &Pipeliner::ensure_full_path($blast_pairs_file) if $blast_pairs_file;
 $output_dir = &Pipeliner::ensure_full_path($output_dir) if $output_dir;
 $fusion_annot_lib = &Pipeliner::ensure_full_path($fusion_annot_lib) if $fusion_annot_lib;
 
@@ -141,9 +111,6 @@ unless ($output_dir) {
 my @tools_required = qw(STAR);
 if ($gmap_build_flag) {
     push (@tools_required, 'gmap_build');
-}
-if ($cdna_fa_file) {
-    push (@tools_required, 'bowtie-build');
 }
 
 my $missing_tool_flag = 0;
@@ -168,42 +135,31 @@ main: {
     unless (-d $output_dir) {
         mkpath($output_dir) or die "Error, cannot mkpath $output_dir";
     }
-    my $checkpoints_dir = "$output_dir/__checkpoints";
-    unless (-d $checkpoints_dir) {
-        mkpath($checkpoints_dir);
-    }
-    
-    
-    my $cmd;
-    
-    unless (-e "$output_dir/ref_genome.fa") {
-        $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_genome.fa.ok"));
-    }
 
-    
+    my $checkpoints_dir = "$output_dir/__chkpts";
+    unless (-d $checkpoints_dir) {
+        mkpath($checkpoints_dir) or die "Error, cannot mkpath $checkpoints_dir";
+    }
+            
+    my $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_genome.fa.ok"));
+        
     ###############################
     ## and copy the annotation file
     
-    unless (-e "$output_dir/ref_annot.gtf") {
-
-        $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.ok"));
-    }
+    $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
+    $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_annot.gtf.ok"));
     
-    unless (-e "$output_dir/ref_annot.gtf.mini.sortu") {
-        $cmd = "bash -c \" set -eof pipefail; $UTILDIR/gtf_to_exon_gene_records.pl $output_dir/ref_annot.gtf  | sort -k 1,1 -k4,4g -k5,5g | uniq  > $output_dir/ref_annot.gtf.mini.sortu \" ";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_sort_ref_annot_gtf_mini.ok"));
-        
-    }
-    
-        
+    # extract exon records    
+    $cmd = "bash -c \" set -eof pipefail; $UTILDIR/gtf_to_exon_gene_records.pl $output_dir/ref_annot.gtf  | sort -k 1,1 -k4,4g -k5,5g | uniq  > $output_dir/ref_annot.gtf.mini.sortu \" ";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.mini.sortu.ok"));
+            
     # build star index
     my $star_index = "$output_dir/ref_genome.fa.star.idx";
     unless (-d $star_index) {
         mkpath $star_index or die "Error, cannot mkdir $star_index";
     }
-
+    
     my $maybe_tmpdir= defined($outTmpDir)? " --outTmpDir $outTmpDir " : "";
 
     $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index $maybe_tmpdir "
@@ -214,26 +170,63 @@ main: {
             . " --sjdbOverhang $max_readlength ";
     
     $pipeliner->add_commands(new Command($cmd, "$star_index/build.ok"));
-
-    unless (-e "$output_dir/ref_annot.gtf.gene_spans") {
-        $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_annot.gtf.gene_spans.ok") );
-    }
     
-
-    #######################
-    # index the blast pairs
+    $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.gene_spans.ok") );
     
-    if ($blast_pairs_file) {
-        $cmd = "$UTILDIR/index_blast_pairs.pl $output_dir/blast_pairs.idx $blast_pairs_file ";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_blast_pairs.idx.ok"));
-
-        # remove blast pairs between genes that physically overlap on the genome
-        $cmd = "$UTILDIR/index_blast_pairs.remove_overlapping_genes.pl $output_dir";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_prune_blast_pairs_overlapping_genes.ok"));
-    }
     
+    #############################
+    ## Begin the BLAST compendium
 
+    # CDS and ncRNA blastn for quick homology identification
+    
+    $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $output_dir/ref_annot.gtf $output_dir/ref_genome.fa CDSplus > ref_annot.cdsplus.fa";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.fa.ok"));
+
+    $cmd = "makeblastdb -in ref_annot.cdsplus.fa -dbtype nucl";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.fa.blidx.ok"));
+
+    $cmd = "blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -soft_masking false -word_size 11 > ref_annot.cdsplus.allvsall.outfmt6";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.allvsall.outfmt6.ok"));
+
+    
+    $cmd = "bash -c \" set -eof pipefail; $UTILDIR/blast_outfmt6_replace_trans_id_w_gene_symbol.pl  ref_annot.cdsplus.fa ref_annot.cdsplus.allvsall.outfmt6 | gzip > ref_annot.cdsplus.allvsall.outfmt6.genesym.gz\" ";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.allvsall.outfmt6.genesym.gz.ok"));
+
+    # index the blast hits:
+    $cmd = "$UTILDIR/index_blast_pairs.pl $output_dir/blast_pairs.idx ref_annot.cdsplus.allvsall.outfmt6.genesym.gz";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/blast_pairs.idx.ok"));
+    
+    # remove blast pairs between genes that physically overlap on the genome
+    $cmd = "$UTILDIR/index_blast_pairs.remove_overlapping_genes.pl $output_dir";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/blast_pairs.idx.ovrem.ok"));
+    
+    
+    ##################################
+    # blast across full cDNA sequences
+
+    # extract the cDNA sequences
+    $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $gtf_file $genome_fa_file cDNA > ref_annot.cdna.fa";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.ok"));
+
+    
+    
+    $cmd = "makeblastdb -in ref_annot.cdna.fa -dbtype nucl";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.blidx.ok"));
+
+    $cmd = "blastn -query ref_annot.cdna.fa -db ref_annot.cdna.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -soft_masking false -word_size 11  > ref_annot.cdna.allvsall.outfmt6";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.ok"));
+    
+    $cmd = "$UTILDIR/isoform_blast_gene_chr_conversion.pl --blast_outfmt6 ref_annot.cdna.allvsall.outfmt6 --gtf $gtf_file > ref_annot.cdna.allvsall.outfmt6.toGenes";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.toGenes.ok"));
+
+    $cmd = "sort -k2,2 -k7,7 ref_annot.cdna.allvsall.outfmt6.toGenes > ref_annot.cdna.allvsall.outfmt6.toGenes.sorted";
+    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.ok"));
+
+    $cmd = "$UTILDIR/build_chr_gene_alignment_index.pl --blast_genes ref_annot.cdna.allvsall.outfmt6.toGenes.sorted  --out_prefix $output_dir/trans.blast.align_coords";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/trans.blast.align_coords.ok"));
+    
+    
     ####################################
     ## integrate protein structure info
     
@@ -261,51 +254,39 @@ main: {
         # build GMAP genome index
         
         $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_genome.fa.gmap.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_genome.fa.gmap.ok"));
     }
-    
-    if ($cdna_fa_file) {
 
         
-        ## This is for FusionInspector, in case HISAT or GSNAP is used.
-        
-
-        ##########################
-        # Prep the cdna fasta file
-        
-        unless (-e "$output_dir/ref_cdna.fasta") {
-            $cmd = "cp $cdna_fa_file $output_dir/ref_cdna.fasta";
-            $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.ok"));
-        }
-                
-        # index the fasta file
-        $cmd = "$UTILDIR/index_cdna_seqs.pl $output_dir/ref_cdna.fasta";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.idx.ok"));
-        
-        # build the bowtie index:
-        $cmd = "bowtie-build $output_dir/ref_cdna.fasta $output_dir/ref_cdna.fasta";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_ref_cdna.fasta.bowtie_idx.ok"));
-        
-    }
-                
-    if ($count_kmers) {
-        my $cmd = "jellyfish count -t $CPU -m 25 -s 1000000000 --canonical $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.count.ok"));
-
-        $cmd = "jellyfish dump -L 2 mer_counts.jf > $output_dir/ref_genome.jf.min2.kmers";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.dump.ok"));
-
-        $cmd = "rm mer_counts.jf";
-        $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_jf.cleanup.ok"));
-        
-    }
-    
     $pipeliner->run();
 
     exit(0);
 }
 
 
+####
+sub check_for_required_tools {
+    my (@tools) = @_;
+
+    my $missing_flag = 0;
+
+    foreach my $tool (@tools) {
+        my $path = `which $tool`;
+        if ($path =~ /\w/) {
+            print STDERR "-found $tool at $path\n";
+        }
+        else {
+            print STDERR "- *** ERROR, cannot locate required tool in PATH setting: $tool ***\n";
+            $missing_flag = 1;
+        }
+    }
+
+    if ($missing_flag) {
+        die "Error, missing at least one required tool. See error messages and perform required software installations before running.";
+    }
+
+}
+    
 
 
         

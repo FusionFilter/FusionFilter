@@ -186,7 +186,7 @@ main: {
     $cmd = "makeblastdb -in ref_annot.cdsplus.fa -dbtype nucl";
     $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.fa.blidx.ok"));
 
-    $cmd = "blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -soft_masking false -word_size 11 > ref_annot.cdsplus.allvsall.outfmt6";
+    $cmd = "blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -dust no > ref_annot.cdsplus.allvsall.outfmt6";
     $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.allvsall.outfmt6.ok"));
 
     
@@ -208,13 +208,11 @@ main: {
     # extract the cDNA sequences
     $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $gtf_file $genome_fa_file cDNA > ref_annot.cdna.fa";
     $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.ok"));
-
-    
     
     $cmd = "makeblastdb -in ref_annot.cdna.fa -dbtype nucl";
     $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.blidx.ok"));
-
-    $cmd = "blastn -query ref_annot.cdna.fa -db ref_annot.cdna.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -soft_masking false -word_size 11  > ref_annot.cdna.allvsall.outfmt6";
+    
+    $cmd = "blastn -query ref_annot.cdna.fa -db ref_annot.cdna.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -dust no  > ref_annot.cdna.allvsall.outfmt6";
     $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.ok"));
     
     $cmd = "$UTILDIR/isoform_blast_gene_chr_conversion.pl --blast_outfmt6 ref_annot.cdna.allvsall.outfmt6 --gtf $gtf_file > ref_annot.cdna.allvsall.outfmt6.toGenes";

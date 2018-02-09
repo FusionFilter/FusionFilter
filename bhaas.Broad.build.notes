@@ -2,6 +2,12 @@
 
 ####
 # pull data from gencode
+
+# Gencode v19:
+wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.annotation.gtf.gz
+wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/GRCh37.p13.genome.fa.gz
+
+
 wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/gencode.v24.annotation.gtf.gz
 wget ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_24/GRCh38.primary_assembly.genome.fa.gz
 
@@ -30,8 +36,24 @@ cat IGH.superlocus.gtf | perl -lane 's/IGH/IGH-/g; print;'  | perl -lane '@x = s
 cat ref_annot.minus_readthrus.gtf  | egrep 'IG_V_gene|IG_C_gene|IG_D_gene|IG_J_gene' | egrep ^chr22 > IGL_locus.gtf
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/make_super_locus.pl IGL_locus.gtf IGL@ IGL.g@ IGL.t@ > IGL.superlocus.gtf
 
+cat IGL.superlocus.gtf  | perl -lane 's/IGL/IGL-/g; print;'  | perl -lane '@x = split(/\t/); $x[6] = "+"; print join("\t", @x);' | tee  IGL.superlocus.revcomp.gtf 
 
-cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGH.superlocus.revcomp.gtf IGL.superlocus.gtf > ref_annot.gtf
+cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGH.superlocus.revcomp.gtf IGL.superlocus.gtf IGL.superlocus.revcomp.gtf > ref_annot.gtf
+
+
+#############################
+# run CTAT genome lib builder: 
+
+~/GITHUB/FusionFilter/prep_genome_lib.pl  --genome_fa ref_genome.fa --gtf ref_annot.gtf  --CPU 5 
+
+
+
+__END__
+
+
+
+######################################################################################
+####### Deprecated below, as incorporated directly into the prep step now where needed.
 
 
 ####

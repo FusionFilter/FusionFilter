@@ -142,7 +142,10 @@ main: {
     }
             
     my $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_genome.fa.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_genome.fa.ok"));
+    
+    $cmd = "samtools faidx $output_dir/ref_genome.fa";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_genome_fai.ok"));
         
     ###############################
     ## and copy the annotation file

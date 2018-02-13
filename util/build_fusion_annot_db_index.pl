@@ -23,7 +23,12 @@ my $usage = <<__EOUSAGE__;
 # optional:
 #
 # --key_pairs <string>      annotations in key(tab)value format
-#   
+#
+#                           format:
+#                           key(tab)simple_annot(tab)complex_annot
+#
+#                                      where complex_annot is optional, and if included
+#                                      is specified as structured json notation.
 #
 #####################################################################
 
@@ -86,14 +91,18 @@ main: {
 
         while (<$fh>) {
             chomp;
-            my ($gene_pair, $annot_string) = split(/\t/);
-                
-            $idx->store_key_value($gene_pair, $annot_string);
+            my ($gene_pair, $simple_annot, $complex_annot) = split(/\t/);
+            
+            if ($simple_annot ne '.') {
+                $idx->store_key_value("$gene_pair$;SIMPLE", $simple_annot);
+            }
+            if ($complex_annot ne '.') {
+                $idx->store_key_value("$gene_pair$;COMPLEX", $complex_annot);
+            }
         }
         close $fh;
     }
-
-
+    
     print STDERR "Done building annot db: $out_db_file\n";
     
     exit(0);

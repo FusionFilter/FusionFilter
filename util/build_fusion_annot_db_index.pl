@@ -99,9 +99,9 @@ main: {
         my $counter = 0;
         while (<$fh>) {
             $counter++;
-            if ($counter % 1000 == 0) {
+            if ($counter % 100000 == 0) {
                 my $pct_done = sprintf("%.2f", $counter/$num_records * 100);
-                print STDERR "\r[$counter = $pct_done\%  done]    ";
+                print STDERR "\r[$pct_done\%  done]    ";
             }
             chomp;
             my ($gene_pair, $simple_annot, $complex_annot) = split(/\t/);

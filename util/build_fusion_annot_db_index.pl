@@ -82,14 +82,27 @@ main: {
     ## load in generic annotations:
 
     if ($key_pairs_file) {
+
+        my $num_records;
+        
         if ($key_pairs_file =~ /\.gz$/) {
+            $num_records = `gunzip -c $key_pairs_file | wc -l `;
             open($fh, "gunzip -c $key_pairs_file | ") or die "Error, cannot open( gunzip -c $key_pairs_file  )";
+            
         }
         else {
+            $num_records = `cat $key_pairs_file | wc -l`;
             open($fh, $key_pairs_file) or die "Error, cannot read file $key_pairs_file";
         }
 
+        chomp $num_records;
+        my $counter = 0;
         while (<$fh>) {
+            $counter++;
+            if ($counter % 1000 == 0) {
+                my $pct_done = sprintf("%.2f", $counter/$num_records * 100);
+                print STDERR "\r[$counter = $pct_done\%  done]    ";
+            }
             chomp;
             my ($gene_pair, $simple_annot, $complex_annot) = split(/\t/);
             
@@ -103,7 +116,7 @@ main: {
         close $fh;
     }
     
-    print STDERR "Done building annot db: $out_db_file\n";
+    print STDERR "\n\nDone building annot db: $out_db_file\n";
     
     exit(0);
 }

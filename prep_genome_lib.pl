@@ -17,6 +17,10 @@ my $max_readlength = 150;
 
 my $output_dir = "ctat_genome_lib_build_dir";
 
+my $annot_filter_rule = "$FindBin::Bin/AnnotFilterRuleLib/AnnotFilterRule.pm";
+
+
+
 my $usage = <<__EOUSAGE__;
 
 ##################################################################################
@@ -152,6 +156,12 @@ main: {
     
     $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
     $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_annot.gtf.ok"));
+
+
+    # copy over the AnnotFilterRule:
+    $cmd = "cp $annot_filter_rule $output_dir/.";
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/annotfiltrule_cp.ok"));
+    
     
     # extract exon records    
     $cmd = "bash -c \" set -eof pipefail; $UTILDIR/gtf_to_exon_gene_records.pl $output_dir/ref_annot.gtf  | sort -k 1,1 -k4,4g -k5,5g | uniq  > $output_dir/ref_annot.gtf.mini.sortu \" ";

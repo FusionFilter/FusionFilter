@@ -72,7 +72,7 @@ main: {
         if ($gene_type) {
             unless($idx->get_value($gene_id)) {
                 # store at least the gene type info for the annotation string.
-                $idx->store_key_value($gene_id, $gene_type);
+                $idx->store_key_value("$gene_id$;GENE_TYPE", $gene_type);
             }
         }
     }

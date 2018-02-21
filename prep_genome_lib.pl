@@ -42,6 +42,9 @@ my $usage = <<__EOUSAGE__;
 #
 #  --fusion_annot_lib <string>     fusion annotation library (key/val pairs, tab-delimited)
 #
+#  --pfam_db <string>              /path/to/Pfam-A.hmm  
+#                                  (get it from here: ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz)
+#
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
 #  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
@@ -63,6 +66,7 @@ my $gtf_file;
 my $fusion_annot_lib;
 
 my $gmap_build_flag = 0;
+my $pfam_db = "";
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -82,6 +86,8 @@ my $gmap_build_flag = 0;
               'gmap_build' => \$gmap_build_flag,
     
               'fusion_annot_lib=s' => \$fusion_annot_lib,
+   
+              'pfam_db=s' => \$pfam_db,
     );
 
 
@@ -140,32 +146,37 @@ main: {
         mkpath($output_dir) or die "Error, cannot mkpath $output_dir";
     }
 
-    my $checkpoints_dir = "$output_dir/__chkpts";
-    unless (-d $checkpoints_dir) {
-        mkpath($checkpoints_dir) or die "Error, cannot mkpath $checkpoints_dir";
+    my $output_dir_checkpoints_dir = "$output_dir/__chkpts";
+    unless (-d $output_dir_checkpoints_dir) {
+        mkpath($output_dir_checkpoints_dir) or die "Error, cannot mkpath $output_dir_checkpoints_dir";
     }
-            
+
+    my $local_checkpoints_dir = "__loc_chkpts";
+    unless (-d $local_checkpoints_dir) {
+        mkpath($local_checkpoints_dir) or die "Error, cannot mkpath $local_checkpoints_dir";
+    }
+        
     my $cmd = "cp $genome_fa_file $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_genome.fa.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_genome.fa.ok"));
     
     $cmd = "samtools faidx $output_dir/ref_genome.fa";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_genome_fai.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_genome_fai.ok"));
         
     ###############################
     ## and copy the annotation file
     
     $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_annot.gtf.ok"));
 
 
     # copy over the AnnotFilterRule:
     $cmd = "cp $annot_filter_rule $output_dir/.";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/annotfiltrule_cp.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/annotfiltrule_cp.ok"));
     
     
     # extract exon records    
     $cmd = "bash -c \" set -eof pipefail; $UTILDIR/gtf_to_exon_gene_records.pl $output_dir/ref_annot.gtf  | sort -k 1,1 -k4,4g -k5,5g | uniq  > $output_dir/ref_annot.gtf.mini.sortu \" ";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.mini.sortu.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_annot.gtf.mini.sortu.ok"));
             
     # build star index
     my $star_index = "$output_dir/ref_genome.fa.star.idx";
@@ -185,7 +196,7 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "$star_index/build.ok"));
     
     $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.gene_spans.ok") );
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_annot.gtf.gene_spans.ok") );
     
     
     #############################
@@ -194,25 +205,24 @@ main: {
     # CDS and ncRNA blastn for quick homology identification
     
     $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $output_dir/ref_annot.gtf $output_dir/ref_genome.fa CDSplus > ref_annot.cdsplus.fa";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.fa.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdsplus.fa.ok"));
 
     $cmd = "makeblastdb -in ref_annot.cdsplus.fa -dbtype nucl";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.fa.blidx.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdsplus.fa.blidx.ok"));
 
     $cmd = "blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -dust no > ref_annot.cdsplus.allvsall.outfmt6";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.allvsall.outfmt6.ok"));
-
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdsplus.allvsall.outfmt6.ok"));
     
     $cmd = "bash -c \" set -eof pipefail; $UTILDIR/blast_outfmt6_replace_trans_id_w_gene_symbol.pl  ref_annot.cdsplus.fa ref_annot.cdsplus.allvsall.outfmt6 | gzip > ref_annot.cdsplus.allvsall.outfmt6.genesym.gz\" ";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdsplus.allvsall.outfmt6.genesym.gz.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdsplus.allvsall.outfmt6.genesym.gz.ok"));
 
     # index the blast hits:
     $cmd = "$UTILDIR/index_blast_pairs.pl $output_dir/blast_pairs.idx ref_annot.cdsplus.allvsall.outfmt6.genesym.gz";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/blast_pairs.idx.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/blast_pairs.idx.ok"));
     
     # remove blast pairs between genes that physically overlap on the genome
     $cmd = "$UTILDIR/index_blast_pairs.remove_overlapping_genes.pl $output_dir";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/blast_pairs.idx.ovrem.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/blast_pairs.idx.ovrem.ok"));
     
     
     ##################################
@@ -220,29 +230,29 @@ main: {
 
     # extract the cDNA sequences
     $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $gtf_file $genome_fa_file cDNA > ref_annot.cdna.fa";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.fa.ok"));
     
     $cmd = "makeblastdb -in ref_annot.cdna.fa -dbtype nucl";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.fa.blidx.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.fa.blidx.ok"));
     
     $cmd = "blastn -query ref_annot.cdna.fa -db ref_annot.cdna.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads $CPU -dust no  > ref_annot.cdna.allvsall.outfmt6";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.allvsall.outfmt6.ok"));
     
     $cmd = "$UTILDIR/isoform_blast_gene_chr_conversion.pl --blast_outfmt6 ref_annot.cdna.allvsall.outfmt6 --gtf $gtf_file > ref_annot.cdna.allvsall.outfmt6.toGenes";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.toGenes.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.allvsall.outfmt6.toGenes.ok"));
 
     $cmd = "sort -k2,2 -k7,7 ref_annot.cdna.allvsall.outfmt6.toGenes > ref_annot.cdna.allvsall.outfmt6.toGenes.sorted";
-    $pipeliner->add_commands(new Command($cmd, "ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.ok"));
 
     $cmd = "$UTILDIR/build_chr_gene_alignment_index.pl --blast_genes ref_annot.cdna.allvsall.outfmt6.toGenes.sorted  --out_prefix $output_dir/trans.blast.align_coords";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/trans.blast.align_coords.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/trans.blast.align_coords.ok"));
     
     
     ####################################
     ## integrate protein structure info
     
     $cmd = "$UTILDIR/build_prot_info_db.pl --gtf $gtf_file --genome_fa $genome_fa_file --out_prefix $output_dir/ref_annot";
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_prot_info_db.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/_prot_info_db.ok"));
     
     
     ######################
@@ -252,7 +262,7 @@ main: {
     if ($fusion_annot_lib) {
         $cmd .= " --key_pairs $fusion_annot_lib";
     }
-    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/_fusion_annot_lib.idx.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/_fusion_annot_lib.idx.ok"));
     
 
     ############################################################
@@ -265,10 +275,30 @@ main: {
         # build GMAP genome index
         
         $cmd = "gmap_build -D $output_dir -d ref_genome.fa.gmap -k 13 $output_dir/ref_genome.fa";
-        $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_genome.fa.gmap.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_genome.fa.gmap.ok"));
     }
 
-        
+
+    if ($pfam_db) {
+
+        # extract the protein sequences:
+        my $cmd = "$UTILDIR/gtf_file_to_feature_seqs.pl $gtf_file $genome_fa_file prot > ref_annot.pep.fa"; 
+        $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/make_pep_file.ok"));
+
+        # run pfam
+        $cmd = "hmmscan --cpu 4 --domtblout PFAM.domtblout.dat $pfam_db ref_annot.pep";
+        $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/hmmscan.ok"));
+
+        # gzip pfam results
+        $cmd= "gzip PFAM.domtblout.dat";
+        $pipeliner->add_commands(new Command($cmd, "local_checkpoints_dir/gzip_pfam.ok"));
+
+        # index the pfam hits:
+        $cmd = "$UTILDIR/index_pfam_domain_info.pl --pfam_domains PFAM.domtblout.dat.gz --genome_lib_dir $output_dir";
+        $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/index_pfam_hits.ok"));
+
+    }
+    
     $pipeliner->run();
 
     exit(0);

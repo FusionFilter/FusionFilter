@@ -289,7 +289,7 @@ main: {
         $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/make_pep_file.ok"));
 
         # run pfam
-        $cmd = "hmmscan --cpu 4 --domtblout PFAM.domtblout.dat $pfam_db ref_annot.pep";
+        $cmd = "hmmscan --cpu 4 --domtblout PFAM.domtblout.dat $pfam_db ref_annot.pep.fa";
         $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/hmmscan.ok"));
 
         # gzip pfam results

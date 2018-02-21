@@ -56,12 +56,24 @@ main: {
 
     
     my %gene_pair_to_coordsets;
-        
-    open(my $fh, $blast_file) or die "Error, cannot open file: $blast_file";
-    
-    my $num_blast_hits = `cat $blast_file | wc -l`;
+
+
+    my $fh;
+    my $num_blast_hits;
+    if ($blast_file =~ /\.gz$/) {
+        $num_blast_hits = `gunzip -c $blast_file | wc -l`;
+        open($fh, "gunzip -c $blast_file | ") or die "Error, cannot open pipe to gunzip -c $blast_file";
+    }
+    else {
+        $num_blast_hits = `cat $blast_file | wc -l`;
+        open($fh, $blast_file) or die "Error, cannot open file: $blast_file";
+    }
     chomp $num_blast_hits;
 
+    unless ($num_blast_hits =~ /\d/ && $num_blast_hits > 0) {
+        die "Error, no blast hits from file: $blast_file";
+    }
+    
     my %seen_pairs;
     
     my $prev_gene_pair = "";

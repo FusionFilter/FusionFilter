@@ -244,7 +244,10 @@ main: {
     $cmd = "sort -k2,2 -k7,7 ref_annot.cdna.allvsall.outfmt6.toGenes > ref_annot.cdna.allvsall.outfmt6.toGenes.sorted";
     $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.ok"));
 
-    $cmd = "$UTILDIR/build_chr_gene_alignment_index.pl --blast_genes ref_annot.cdna.allvsall.outfmt6.toGenes.sorted  --out_prefix $output_dir/trans.blast.align_coords";
+    $cmd = "gzip ref_annot.cdna.allvsall.outfmt6.toGenes.sorted";
+    $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.gzip.ok"));
+    
+    $cmd = "$UTILDIR/build_chr_gene_alignment_index.pl --blast_genes ref_annot.cdna.allvsall.outfmt6.toGenes.sorted.gz  --out_prefix $output_dir/trans.blast.align_coords";
     $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/trans.blast.align_coords.ok"));
     
     

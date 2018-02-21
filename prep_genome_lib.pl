@@ -155,7 +155,7 @@ main: {
     ## and copy the annotation file
     
     $cmd = "cp $gtf_file $output_dir/ref_annot.gtf";
-    $pipeliner->add_commands(new Command($cmd, "$output_dir/ref_annot.gtf.ok"));
+    $pipeliner->add_commands(new Command($cmd, "$checkpoints_dir/ref_annot.gtf.ok"));
 
 
     # copy over the AnnotFilterRule:

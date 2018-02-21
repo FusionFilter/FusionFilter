@@ -81,9 +81,11 @@ foreach my $asmbl_id (sort keys %contig_to_gene_list) {
                     $seq = $isoform->get_cDNA_sequence();
                 }
             }
-            elsif ($seqType eq 'prot' && $isoform->is_coding_gene()) {
-                # protein
-                $seq = $isoform->get_protein_sequence();
+            elsif ($seqType eq 'prot') {
+                if ($isoform->is_coding_gene()) {
+                    # protein
+                    $seq = $isoform->get_protein_sequence();
+                }
             }
             else {
                 die "Error, shouldn't reach here...";

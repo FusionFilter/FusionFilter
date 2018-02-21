@@ -15,9 +15,9 @@ my $help_flag;
 
 my $usage = <<__EOUSAGE__;
 
-#############################################################
+####################################################################################
 #
-#  --fusions <string>    fusion predictions
+#  --fusions <string>    fusion predictions (must be annotated via FusionAnnotator)
 #
 #  --genome_lib_dir <string>   CTAT genome lib dir
 #
@@ -26,7 +26,7 @@ my $usage = <<__EOUSAGE__;
 #  --min_FFPM <float>     min FFPM 
 #
 #
-###########################################################
+####################################################################################
 
 __EOUSAGE__
 
@@ -115,6 +115,8 @@ main: {
     close $ofh_pass;
     close $ofh_fail;
 
+    print STDERR "-done, see $pass_file\n";
+    
     exit(0);
 }
 

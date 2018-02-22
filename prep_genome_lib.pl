@@ -294,7 +294,7 @@ main: {
 
         # gzip pfam results
         $cmd= "gzip PFAM.domtblout.dat";
-        $pipeliner->add_commands(new Command($cmd, "local_checkpoints_dir/gzip_pfam.ok"));
+        $pipeliner->add_commands(new Command($cmd, "$local_checkpoints_dir/gzip_pfam.ok"));
 
         # index the pfam hits:
         $cmd = "$UTILDIR/index_pfam_domain_info.pl --pfam_domains PFAM.domtblout.dat.gz --genome_lib_dir $output_dir";

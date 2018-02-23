@@ -68,6 +68,8 @@ my $fusion_annot_lib;
 my $gmap_build_flag = 0;
 my $pfam_db = "";
 
+my $SKIP_STAR_FLAG = 0;
+
 &GetOptions ( 'h' => \$help_flag,
 
               # required for STAR-Fusion, FusionInspector, GMAP-fusion
@@ -88,7 +90,13 @@ my $pfam_db = "";
               'fusion_annot_lib=s' => \$fusion_annot_lib,
    
               'pfam_db=s' => \$pfam_db,
-    );
+   
+
+              # misc opts
+              'skip_star' => \$SKIP_STAR_FLAG,
+              
+
+ );
 
 
 if ($help_flag) {
@@ -179,21 +187,26 @@ main: {
     $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_annot.gtf.mini.sortu.ok"));
             
     # build star index
-    my $star_index = "$output_dir/ref_genome.fa.star.idx";
-    unless (-d $star_index) {
-        mkpath $star_index or die "Error, cannot mkdir $star_index";
-    }
-    
-    my $maybe_tmpdir= defined($outTmpDir)? " --outTmpDir $outTmpDir " : "";
 
-    $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index $maybe_tmpdir "
+    unless ($SKIP_STAR_FLAG) {
+    
+        my $star_index = "$output_dir/ref_genome.fa.star.idx";
+        unless (-d $star_index) {
+            mkpath $star_index or die "Error, cannot mkdir $star_index";
+        }
+        
+        my $maybe_tmpdir= defined($outTmpDir)? " --outTmpDir $outTmpDir " : "";
+        
+        $cmd = "STAR --runThreadN $CPU --runMode genomeGenerate --genomeDir $star_index $maybe_tmpdir "
             . " --genomeFastaFiles $output_dir/ref_genome.fa "
             . " --limitGenomeGenerateRAM 40419136213 "
             . " --genomeChrBinNbits 16 " # needed for >4k contigs w/ FI
             . " --sjdbGTFfile $gtf_file "
             . " --sjdbOverhang $max_readlength ";
+        
+        $pipeliner->add_commands(new Command($cmd, "$star_index/build.ok"));
     
-    $pipeliner->add_commands(new Command($cmd, "$star_index/build.ok"));
+    }
     
     $cmd = "$UTILDIR/gtf_to_gene_spans.pl $output_dir/ref_annot.gtf > $output_dir/ref_annot.gtf.gene_spans";
     $pipeliner->add_commands(new Command($cmd, "$output_dir_checkpoints_dir/ref_annot.gtf.gene_spans.ok") );

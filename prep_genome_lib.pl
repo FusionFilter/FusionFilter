@@ -42,6 +42,8 @@ my $usage = <<__EOUSAGE__;
 #
 #  --fusion_annot_lib <string>     fusion annotation library (key/val pairs, tab-delimited)
 #
+#  --annot_filter_rule <string>    target AnnotFilterRule.pm (default: $annot_filter_rule)
+#
 #  --pfam_db <string>              /path/to/Pfam-A.hmm  
 #                                  (get it from here: ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz)
 #
@@ -91,7 +93,8 @@ my $SKIP_STAR_FLAG = 0;
    
               'pfam_db=s' => \$pfam_db,
    
-
+              'annot_filter_rule=s' => \$annot_filter_rule,
+              
               # misc opts
               'skip_star' => \$SKIP_STAR_FLAG,
               

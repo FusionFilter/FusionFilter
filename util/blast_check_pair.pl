@@ -28,7 +28,7 @@ else {
 }
 
 my $BLAST_ALIGNS_IDX;
-my $blast_aligns_idx_file = "$genome_lib_dir/blast.nomask.align_coords.dbm";
+my $blast_aligns_idx_file = "$genome_lib_dir/trans.blast.align_coords.align_coords.dbm";
 if (-s $blast_aligns_idx_file) {
     $BLAST_ALIGNS_IDX = new TiedHash( { use => $blast_aligns_idx_file } );
 }

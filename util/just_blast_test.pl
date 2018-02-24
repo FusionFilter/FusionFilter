@@ -11,7 +11,7 @@ use TiedHash;
 
 
 
-my $cdna_fasta_file = "$ENV{CTAT_GENOME_LIB}/ref_annot.cdna";
+my $cdna_fasta_file = "$ENV{CTAT_GENOME_LIB}/ref_annot.cdna.fa";
 
 
 my $usage = <<__EOUSAGE__;

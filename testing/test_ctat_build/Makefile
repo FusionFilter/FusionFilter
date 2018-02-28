@@ -9,3 +9,4 @@ clean:
 	rm -f ./pipeliner.*.cmds
 	rm -f ./ref_annot.*
 	rm -rf ./ctat_genome_lib_build_dir
+	rm -rf ./__loc_chkpts

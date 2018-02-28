@@ -1,8 +1,8 @@
 #fusion_name	J	S
-geneA--B4GALNT1	4	10
-geneA--SLC26A10	1	1
+geneA--BCAR3	4	10
+geneA--FSD1	1	1
 
-DBNL--geneB	2	4
-PGAM2--geneB	100	400
+CRTC2--geneB	2	4
+ARSD--geneB	100	400
 
 

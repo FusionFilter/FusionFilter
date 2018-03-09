@@ -50,7 +50,9 @@ my $usage = <<__EOUSAGE__;
 #  --CPU <int>                     number of threads (defalt: $CPU)
 #
 #  --gmap_build                    include gmap_build (for use w/ DISCASM/GMAP-fusion)
-# 
+#                                  equivalent to running the following in the ctat_genome_lib_build_dir:
+#                                        gmap_build -D . -d ref_genome.fa.gmap -k 13 ./ref_genome.fa
+#
 #  --outTmpDir	<string>	   passed to STAR (very useful if local disks are faster than network disks)
 #
 ##################################################################################

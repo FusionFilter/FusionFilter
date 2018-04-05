@@ -20,7 +20,7 @@ my $usage = <<__EOUSAGE__;
 #                                 Required formatting is:  
 #                                 geneA--geneB (tab) junction_read_count (tab) spanning_read_count (tab) ... rest
 #
-#  --out_prefix <string>          prefix for output filename (will tack on .final and .final.abridged)
+#  --out_prefix <string>          prefix for output filename (will tack on .post_blast_and_promiscuity_filter)
 #
 #  --genome_lib_dir <string>      genome lib directory
 #
@@ -133,9 +133,8 @@ main: {
         confess "Error, no output file: $post_promisc_outfile";
     }
 
-    ## just copy it to the expected output file name:
 
-    $cmd = "cp $post_promisc_outfile $out_prefix.final";
+    $cmd = "ln -sf $post_promisc_outfile $out_prefix.post_blast_and_promiscuity_filter";
     &process_cmd($cmd);
     
 

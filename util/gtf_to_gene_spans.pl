@@ -31,13 +31,16 @@ main: {
         
         my $gene_id = $1;
 
-        my $gene_name = "";
+        my $gene_name = "$gene_id";
         if ($info =~ /gene_name \"([^\"]+)\"/) {
             $gene_name = $1;
         }
-
+        
         my $gene_type = "";
         if ($info =~ /gene_type \"([^\"]+)\"/) {
+            $gene_type = $1;
+        }
+        elsif ($info =~ /gene_biotype \"([^\"]+)\"/) {
             $gene_type = $1;
         }
         

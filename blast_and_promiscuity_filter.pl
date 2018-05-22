@@ -134,7 +134,7 @@ main: {
     }
 
 
-    $cmd = "ln -sf $post_promisc_outfile $out_prefix.post_blast_and_promiscuity_filter";
+    $cmd = "cp $post_promisc_outfile $out_prefix.post_blast_and_promiscuity_filter";
     &process_cmd($cmd);
     
 

@@ -70,11 +70,11 @@ main: {
     
     my $delim_parser = new DelimParser::Reader($fh, "\t");
 
-    my $pass_file = "$predictions_file.pass";
+    my $pass_file = "$predictions_file.annot_filter.pass";
     open(my $ofh_pass, ">$pass_file") or die "Error, cannot write to file: $pass_file";
 
     
-    my $fail_file = "$predictions_file.annot_filt";
+    my $fail_file = "$predictions_file.annot_filter.fail";
     open(my $ofh_fail, ">$fail_file") or die "Error, cannot write to file: $fail_file";
 
     my @column_headers = $delim_parser->get_column_headers();

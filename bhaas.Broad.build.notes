@@ -27,16 +27,23 @@ fasta_acc_filter.pl chr.accs GRCh38.primary_assembly.genome.fa > ref_genome.fa
 ##################################
 # create superloci for IGH and IGL
 
+## IGH
+
 cat ref_annot.minus_readthrus.gtf  | egrep 'IG_V_gene|IG_C_gene|IG_D_gene|IG_J_gene' | egrep ^chr14  > IGH_locus.gtf
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/make_super_locus.pl IGH_locus.gtf IGH@ IGH.g@ IGH.t@ > IGH.superlocus.gtf
 
-# add revcomp for IGH superlocus:
+- add revcomp for IGH superlocus:
 cat IGH.superlocus.gtf | perl -lane 's/IGH/IGH-/g; print;'  | perl -lane '@x = split(/\t/); $x[6] = "+"; print join("\t", @x);' | tee  IGH.superlocus.revcomp.gtf
+
+## IGL
 
 cat ref_annot.minus_readthrus.gtf  | egrep 'IG_V_gene|IG_C_gene|IG_D_gene|IG_J_gene' | egrep ^chr22 > IGL_locus.gtf
 ~/GITHUB/CTAT_FUSIONS/FusionFilter/util/make_super_locus.pl IGL_locus.gtf IGL@ IGL.g@ IGL.t@ > IGL.superlocus.gtf
 
 cat IGL.superlocus.gtf  | perl -lane 's/IGL/IGL-/g; print;'  | perl -lane '@x = split(/\t/); $x[6] = "+"; print join("\t", @x);' | tee  IGL.superlocus.revcomp.gtf 
+
+
+### consolidate IG super-loci into single ref annot file
 
 cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGH.superlocus.revcomp.gtf IGL.superlocus.gtf IGL.superlocus.revcomp.gtf > ref_annot.gtf
 
@@ -49,66 +56,4 @@ cat ref_annot.minus_readthrus.gtf IGH.superlocus.gtf IGH.superlocus.revcomp.gtf 
 
 
 __END__
-
-
-
-######################################################################################
-####### Deprecated below, as incorporated directly into the prep step now where needed.
-
-
-####
-# make cDNA sequence file
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/gtf_file_to_cDNA_seqs.pl ref_annot.gtf ref_genome.fa > ref_annot.cdna.fa
-
-
-####
-# run RepeatMasker
-/seq/annotation/bio_tools/RepeatMasker-open-4-0-3/RepeatMasker/RepeatMasker -pa 20 -s -species human -xsmall ref_annot.cdna.fa
-
-
-####
-# all-vs-all blastn
-makeblastdb -in ref_annot.cdna.fa.masked -dbtype nucl
-
-blastn -query ref_annot.cdna.fa.masked -db ref_annot.cdna.fa.masked -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -lcase_masking  -word_size 11 -num_threads 20 > blast_pairs.outfmt6
-
-# replace gene symbols for trans ids
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl ref_annot.cdna.fa.masked blast_pairs.outfmt6 | gzip > blast_pairs.gene_syms.outfmt6.gz
-
-
-############################################################################################################
-#### include additional blast search among coding (excl. utr)  sequences and ncRNAs, not using repeatmasking
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/gtf_file_to_cDNA_seqs.pl ref_annot.gtf ref_genome.fa CDSplus > ref_annot.cdsplus.fa
-
-makeblastdb -in ref_annot.cdsplus.fa -dbtype nucl
-
-blastn -query ref_annot.cdsplus.fa -db ref_annot.cdsplus.fa -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads 10  > ref_annot.cdsplus.allvsall.outfmt6
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/blast_outfmt6_replace_trans_id_w_gene_symbol.pl  ref_annot.cdsplus.fa ref_annot.cdsplus.allvsall.outfmt6 > ref_annot.cdsplus.allvsall.outfmt6.genesym
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/index_blast_pairs.pl ctat_genome_lib_build_dir/blast_pairs.idx blast_pairs.gene_syms.outfmt6.gz ref_annot.cdsplus.allvsall.outfmt6.genesym.gz
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/index_blast_pairs.remove_overlapping_genes.pl $CTAT_GENOME_LIB
-
-
-###########################################################################################################
-#### capture all alignments including between repetitive regions.
-
-blastn -query ref_annot.cdna.fa.masked -db ref_annot.cdna.fa.masked -max_target_seqs 10000 -outfmt 6 -evalue 1e-10 -num_threads 30 -soft_masking false -word_size 11  > ref_annot.cdna.allvsall.nomask.W11.outfmt6
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/isoform_blast_gene_chr_conversion.pl --blast_outfmt6 ref_annot.cdna.allvsall.nomask.W11.outfmt6 --gtf ref_annot.gtf > ref_annot.cdna.allvsall.nomask.W11.outfmt6.toGenes
-
-sort -k2,2 -k7,7 ref_annot.cdna.allvsall.nomask.W11.outfmt6.toGenes > ref_annot.cdna.allvsall.nomask.W11.outfmt6.toGenes.sorted
-
-~/GITHUB/CTAT_FUSIONS/FusionFilter/util/build_chr_gene_alignment_index.pl --blast_genes ref_annot.cdna.allvsall.nomask.W11.outfmt6.toGenes.sorted  --out_prefix ctat_genome_lib_build_dir/blast.nomask.align_coords
-
-
-### Pfam integration:
-
-hmmscan --cpu 4 --domtblout PFAM.domtblout.dat /seq/RNASEQ/DBs/PFAM/current/Pfam-A.hmm ref_annot.pep
-
-gzip PFAM.domtblout.dat
-
-FusionFilter/util/index_pfam_domain_info.pl --pfam_domains PFAM.domtblout.dat.gz --genome_lib_dir build_dir/
 

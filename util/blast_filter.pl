@@ -9,6 +9,7 @@ use Getopt::Long qw(:config posix_default no_ignore_case bundling pass_through);
 use TiedHash;
 use Data::Dumper;
 use Gene_overlap_check;
+use DelimParser;
 
 
 my $usage = <<__EOUSAGE__;
@@ -83,22 +84,6 @@ my %BLAST_CACHE;
 
 
 
-=input_format:
-
-0       ETV6--NTRK3
-1       84
-2       18
-3       ONLY_REF_SPLICE
-4       ETV6^ENSG00000139083.6
-5       chr12:12022903:+
-6       NTRK3^ENSG00000140538.12
-7       chr15:88483984:-
-8       comma-delim list of junction reads
-9       comma-delim list of spanning frags
-
-=cut
-
-
 main: {
 
     my $final_preds_file = "$fusion_preds_file.post_blast_filter";
@@ -108,29 +93,32 @@ main: {
     open (my $filter_ofh, ">$filter_info_file") or die "Error, cannot write to $filter_info_file";
 
     open (my $fh, $fusion_preds_file) or die "Error, cannot open file $fusion_preds_file";
-    my $header = <$fh>;
-    unless ($header =~ /^\#/) {
-        die "Error, file $fusion_preds_file doesn't begin with a header line";
-    }
-    print $filter_ofh $header;
-    print $final_ofh $header;
+    my $delim_parser = new DelimParser::Reader($fh, "\t");
+    my @column_headings = $delim_parser->get_column_headers();
 
-
+    my $final_ofh_writer = new DelimParser::Writer($final_ofh, "\t", \@column_headings);
+    my $filter_ofh_writer = new DelimParser::Writer($filter_ofh, "\t", [@column_headings, "FilterReason"]);
+    
+    
+    
     my @fusions;
     
-    while (<$fh>) {
-        chomp;
-        unless (/\w/) { next; }
-        my $line = $_;
-        my @x = split(/\t/);
-        my $fusion_name = $x[0];
+    while (my $row = $delim_parser->get_row()) { 
+	my $fusion_name = $row->{'#FusionName'};
 
         my ($geneA, $geneB) = split(/--/, $fusion_name);
-        my ($J, $S) = ($x[1], $x[2]);
 
-        my $score = 4*$J + $S;
+	my $J = $row->{est_J} || $row->{JunctionReadCount} || 0;
+	my $S = $row->{est_S} || $row->{SpanningFragCount} || 0;
+	my $num_LR = $row->{num_LR} || 0;
+
+	if ( $J eq "NA") { $J = 0; }
+	if ( $S eq "NA") { $S = 0; }
+	if ( $num_LR eq "NA") { $num_LR = 0; }
+
+        my $score = $num_LR + 4*$J + $S;
         
-        push (@fusions, { line => $line,
+        push (@fusions, { row => $row,
                           fusion_name => $fusion_name,
                           geneA => $geneA,
                           geneB => $geneB,
@@ -177,9 +165,9 @@ main: {
         
         my $geneA = $fusion->{geneA};
         my $geneB = $fusion->{geneB};
-        
-        
 
+	my $row = $fusion->{row};
+        
         my @blast_info;
 
         if ($already_approved{$geneA}->{$geneB}) {
@@ -227,13 +215,15 @@ main: {
         my $line = $fusion->{line};
         
         if (@blast_info) {
-            
-            print $filter_ofh "#" . "$line\t" . join("\t", @blast_info) . "\n";
+
+	    $row->{FilterReason} = join("^^^", @blast_info);
+	    
+	    $filter_ofh_writer->write_row($row);
+	    
         }
         else {
             
-            print $final_ofh "$line\n";
-            print $filter_ofh "$line\n";
+            $final_ofh_writer->write_row($row);
             
             $already_approved{$geneA}->{$geneB} = 1;
         }

@@ -1,4 +1,4 @@
-#fusion_name	J	S
+#FusionName	est_J	est_S
 MROH7--ANKRD13D	17	42
 RN7SL374P--ERMN	46	64
 ok_C--ok_D	1	1
@@ -6,6 +6,3 @@ TARS2--TYK2	18	49
 ok_A--ok_B	5	6
 NDUFS5P2--NDUFS5P5	22	70
 AMY1B--AMY2B	15	81
-
-
-

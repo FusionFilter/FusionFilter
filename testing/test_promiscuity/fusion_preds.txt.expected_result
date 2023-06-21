@@ -1,4 +1,4 @@
-#fusion_name	J	S
+#FusionName	est_J	est_S
 ok_A--ok_B	1	1
 ok_C--prom_D	10	40
 prom_D--prom_F	20	20

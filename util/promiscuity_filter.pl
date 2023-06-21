@@ -9,6 +9,7 @@ use Data::Dumper;
 use List::Util qw(max);
 use lib ("$FindBin::Bin/../lib");
 use Gene_overlap_check;
+use DelimParser;
 
 my $MAX_PROMISCUITY = 10;
 my $MIN_PCT_DOM_PROM = 20;
@@ -88,20 +89,7 @@ unless ($fusion_preds_file && $genome_lib_dir) {
 
 
 
-=input_format:
 
-0       ETV6--NTRK3
-1       84
-2       18
-3       ONLY_REF_SPLICE
-4       ETV6^ENSG00000139083.6
-5       chr12:12022903:+
-6       NTRK3^ENSG00000140538.12
-7       chr15:88483984:-
-8       comma-delim list of junction reads
-9       comma-delim list of spanning frags
-
-=cut
 
 
 main: {
@@ -114,24 +102,32 @@ main: {
     
     my @fusions;
     open (my $fh, $fusion_preds_file) or die "Error, cannot open file $fusion_preds_file";
-    my $header = <$fh>;
-    unless ($header =~ /^\#/) {
-        die "Error, file $fusion_preds_file doesn't begin with a header line";
-    }
-    while (<$fh>) {
-        chomp;
-        unless (/\w/) { next; }
-        my $line = $_;
-        my @x = split(/\t/);
-        my $fusion_name = $x[0];
-        my $J = $x[1];
-        my $S = $x[2];
 
+
+    my $delim_parser = new DelimParser::Reader($fh, "\t");
+    my @column_headers = $delim_parser->get_column_headers(); 
+
+
+    my $final_ofh_writer = new DelimParser::Writer($final_ofh, "\t", \@column_headers);
+    my $filter_ofh_writer = new DelimParser::Writer($filter_ofh, "\t", [@column_headers, "FilterReason"]);
+    
+        
+    while (my $row = $delim_parser->get_row()) {
+	my $fusion_name = $row->{'#FusionName'};
+        my $J = $row->{est_J} || $row->{JunctionReadCount};
+        my $S = $row->{est_S} || $row->{SpanningFragCount};
+	my $num_LR = $row->{num_LR};
+
+	
+	if ($J eq "NA") { $J = 0; }
+	if ($S eq "NA") { $S = 0; }
+	if ( (! defined($num_LR)) || $num_LR eq "NA") {
+	    $num_LR = 0;
+	}
 
         my ($geneA, $geneB) = split(/--/, $fusion_name);
 
-        #my $score = sqrt($J**2 + $S**2);
-        my $score = $J*4 + $S;
+        my $score = $num_LR + $J*4 + $S;
         
         
         my $fusion = { fusion_name => $fusion_name,
@@ -144,9 +140,9 @@ main: {
                        
                        score => $score, 
                        
-                       sum_JS => $J + $S,
+                       sum_JS => $num_LR + $J + $S,
                        
-                       line => $line,
+                       row => $row,
         };
     
         push (@fusions, $fusion); 
@@ -160,25 +156,22 @@ main: {
     
     # generate outputs
     
-    print $filter_ofh $header;
-    print $final_ofh $header;
-    
     @fusions = reverse sort {$a->{score} <=> $b->{score} 
                              ||
                                  $b->{fusion_name} cmp $a->{fusion_name}  # more stable sorting
 
     } @fusions;
     
-    @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
+    @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh_writer, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
     
 
     foreach my $fusion (@fusions) {
         my ($geneA, $geneB) = split(/--/, $fusion->{fusion_name});
 
-        my $line = $fusion->{line};
-        
-        print $final_ofh "$line\n";
-        print $filter_ofh "$line\n";
+        my $row = $fusion->{row};
+
+	$final_ofh_writer->write_row($row);
+	
     }
     
     close $filter_ofh;
@@ -192,16 +185,16 @@ main: {
 
 ####
 sub remove_promiscuous_fusions {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom) = @_;
+    my ($fusions_aref, $filter_ofh_writer, $max_promiscuity, $min_pct_prom_dom) = @_;
             
-    my @filtered_fusions = &filter_promiscuous_low_pct_prom_dom($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom);
+    my @filtered_fusions = &filter_promiscuous_low_pct_prom_dom($fusions_aref, $filter_ofh_writer, $max_promiscuity, $min_pct_prom_dom);
 
     if ($DEBUG) {
         print STDERR "After filtering proms low pct dom: " . Dumper(\@filtered_fusions);
     }
 
 
-    @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh, $max_promiscuity);
+    @filtered_fusions = &filter_remaining_promiscuous_fusions(\@filtered_fusions, $filter_ofh_writer, $max_promiscuity);
     
     
     if ($DEBUG) {
@@ -213,7 +206,7 @@ sub remove_promiscuous_fusions {
 
 ####
 sub filter_promiscuous_low_pct_prom_dom {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity, $min_pct_prom_dom) = @_;
+    my ($fusions_aref, $filter_ofh_writer, $max_promiscuity, $min_pct_prom_dom) = @_;
     
     my %max_sum_support_fusion_partner = &get_max_sum_support_fusion_partner($fusions_aref);
     
@@ -239,9 +232,13 @@ sub filter_promiscuous_low_pct_prom_dom {
 
             my $pct_prom_dom = sprintf("%.1f", $sum_JS / $max_partner_support * 100);
             if ($pct_prom_dom < $min_pct_prom_dom) {
-                
-                print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners AND having only $pct_prom_dom support ($sum_JS) of max partner support ($max_partner_support)\n";
-                next;
+
+		my $row = $fusion->{row};
+		$row->{FilterReason} = "FILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners AND having only $pct_prom_dom support ($sum_JS) of max partner support ($max_partner_support)\n";
+
+		$filter_ofh_writer->write_row($row);
+
+		next; # important, don't keep it below.
             }
         }
         
@@ -256,7 +253,7 @@ sub filter_promiscuous_low_pct_prom_dom {
 
 ####
 sub filter_remaining_promiscuous_fusions {
-    my ($fusions_aref, $filter_ofh, $max_promiscuity) = @_;
+    my ($fusions_aref, $filter_ofh_writer, $max_promiscuity) = @_;
     
     print STDERR "-filter_remaining_promiscuous_fusions\n" if $DEBUG;
     
@@ -296,20 +293,24 @@ sub filter_remaining_promiscuous_fusions {
 
 
         }
-        
-
+    
         if (&is_promiscuous($num_geneA_partners, $num_geneB_partners, $max_promiscuity)) {
-            
-            print $filter_ofh "#" . $fusion->{line} . "\tFILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners\n";
+
+	    my $row = $fusion->{row};
+
+	    $row->{FilterReason} = "FILTERED DUE TO reached max promiscuity ($max_promiscuity), num_partners($geneA)=$num_geneA_partners and num_partners($geneB)=$num_geneB_partners\n";
+
+	    $filter_ofh_writer->write_row($row);
+	    
         }
         else {
             push (@ret_fusions, $fusion);
         }
     }
     
-
     return(@ret_fusions);
 }
+
 
 ####
 sub count_fusion_partners {

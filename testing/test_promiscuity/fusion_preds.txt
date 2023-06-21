@@ -1,13 +1,9 @@
-#fusion_name	J	S
+#FusionName	est_J	est_S
 ok_A--ok_B	1	1
-
 ok_C--prom_D	10	40
-
 prom_D--prom_E	1	1
 prom_D--prom_F	20	20
 prom_D--prom_G	1	1
-
-
 prom_H--prom_E	1	1
 prom_H--prom_F	1	1
 prom_H--prom_G	1	1

@@ -129,7 +129,7 @@ main: {
 
         my $score = $num_LR + $J*4 + $S;
 
-	print STDERR "$fusion_name\tscore: $score\n";
+	#print STDERR "$fusion_name\tscore: $score\n";
         
         my $fusion = { fusion_name => $fusion_name,
                        

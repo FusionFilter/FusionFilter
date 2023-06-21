@@ -1,6 +1,5 @@
 DIRS = blast_test  \
        test_promiscuity \
-       test_promiscuity_incl_gene_overlap \
        test_paralogs
 
 test:

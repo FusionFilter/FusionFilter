@@ -114,21 +114,22 @@ main: {
         
     while (my $row = $delim_parser->get_row()) {
 	my $fusion_name = $row->{'#FusionName'};
-        my $J = $row->{est_J} || $row->{JunctionReadCount};
-        my $S = $row->{est_S} || $row->{SpanningFragCount};
-	my $num_LR = $row->{num_LR};
-
+        my $J = $row->{est_J} || $row->{JunctionReadCount} || 0;
+        my $S = $row->{est_S} || $row->{SpanningFragCount} || 0;
+	my $num_LR = $row->{num_LR} || 0;
+	
 	
 	if ($J eq "NA") { $J = 0; }
 	if ($S eq "NA") { $S = 0; }
-	if ( (! defined($num_LR)) || $num_LR eq "NA") {
+	if ($num_LR eq "NA") {
 	    $num_LR = 0;
 	}
-
+	
         my ($geneA, $geneB) = split(/--/, $fusion_name);
 
         my $score = $num_LR + $J*4 + $S;
-        
+
+	print STDERR "$fusion_name\tscore: $score\n";
         
         my $fusion = { fusion_name => $fusion_name,
                        
@@ -161,6 +162,7 @@ main: {
                                  $b->{fusion_name} cmp $a->{fusion_name}  # more stable sorting
 
     } @fusions;
+
     
     @fusions = &remove_promiscuous_fusions(\@fusions, $filter_ofh_writer, $MAX_PROMISCUITY, $MIN_PCT_DOM_PROM);
     
@@ -220,7 +222,8 @@ sub filter_promiscuous_low_pct_prom_dom {
         my $geneB = $fusion->{geneB};
         
         my $sum_JS = $fusion->{sum_JS};
-        
+	#my $score = $fusion->{score};
+	        
         my $num_geneA_partners = scalar(keys %{$partners{$geneA}});
         my $num_geneB_partners = scalar(keys %{$partners{$geneB}});
         
@@ -273,7 +276,9 @@ sub filter_remaining_promiscuous_fusions {
         
         my $num_geneA_partners = scalar(@geneA_partners);
         my $num_geneB_partners = scalar(@geneB_partners);
-        
+
+	#my $score = $fusion->{score};
+		
         print STDERR "Fusion: $geneA--$geneB, num_A_partners: $num_geneA_partners, num_B_partners: $num_geneB_partners\n" if $DEBUG;
         
         if ( (! $EXCLUDE_LOCI_OVERLAP_CHECK) # for testing

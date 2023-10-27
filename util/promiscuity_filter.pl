@@ -88,10 +88,6 @@ unless ($fusion_preds_file && $genome_lib_dir) {
 }
 
 
-
-
-
-
 main: {
 
     my $final_preds_file = "$fusion_preds_file.post_promisc_filter";
@@ -114,9 +110,9 @@ main: {
         
     while (my $row = $delim_parser->get_row()) {
         my $fusion_name = $row->{'#FusionName'};
-        my $J = ($row->{est_J} eq "NA") ? $row->{JunctionReadCount} : $row->{est_J};
-        my $S = ($row->{est_S} eq "NA") ? $row->{SpanningFragCount} : $row->{est_S};
-
+        my $J = ( (!defined($row->{est_J})) || $row->{est_J} eq "NA") ? $row->{JunctionReadCount} : $row->{est_J};
+        my $S = ( (!defined($row->{est_S})) || $row->{est_S} eq "NA") ? $row->{SpanningFragCount} : $row->{est_S};
+        
         
         my $num_LR = $row->{num_LR} || 0;
         
@@ -348,8 +344,10 @@ sub get_max_sum_support_fusion_partner {
     foreach my $fusion (@$fusions_aref) {
         my ($geneA, $geneB) = ($fusion->{geneA}, $fusion->{geneB});
         
-        my $sum_support = $fusion->{sum_JS} or confess "Error, no sum_JS for " . Dumper($fusion);
-        
+        my $sum_support = $fusion->{sum_JS};
+        unless ($sum_support > 0) {
+            print STDERR "Warning! , no sum_JS for " . Dumper($fusion);
+        }
         if ( (! exists $partner_to_max_support{$geneA}) || $partner_to_max_support{$geneA} < $sum_support) {
             $partner_to_max_support{$geneA} = $sum_support;
         }

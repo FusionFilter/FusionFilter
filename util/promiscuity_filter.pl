@@ -113,18 +113,21 @@ main: {
     
         
     while (my $row = $delim_parser->get_row()) {
-	my $fusion_name = $row->{'#FusionName'};
-        my $J = $row->{est_J} || $row->{JunctionReadCount} || 0;
-        my $S = $row->{est_S} || $row->{SpanningFragCount} || 0;
-	my $num_LR = $row->{num_LR} || 0;
-	
-	
-	if ($J eq "NA") { $J = 0; }
-	if ($S eq "NA") { $S = 0; }
-	if ($num_LR eq "NA") {
-	    $num_LR = 0;
-	}
-	
+        my $fusion_name = $row->{'#FusionName'};
+        my $J = ($row->{est_J} eq "NA") ? $row->{JunctionReadCount} : $row->{est_J};
+        my $S = ($row->{est_S} eq "NA") ? $row->{SpanningFragCount} : $row->{est_S};
+
+        
+        my $num_LR = $row->{num_LR} || 0;
+        
+        
+        if ($J !~ /\d/) { $J = 0; }
+        if ($S !~ /\d/) { $S = 0; }
+        
+        if ($num_LR eq "NA") {
+            $num_LR = 0;
+        }
+        
         my ($geneA, $geneB) = split(/--/, $fusion_name);
 
         my $score = $num_LR + $J*4 + $S;

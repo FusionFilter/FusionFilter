@@ -25,6 +25,7 @@ my $usage = <<__EOUSAGE__;
 #
 #  --min_FFPM <float>     min FFPM 
 #
+#  --custom_exclusions <string>    list of attributes to additionally filter on (comma-delimited list)
 #
 ####################################################################################
 
@@ -36,6 +37,7 @@ __EOUSAGE__
 my $predictions_file;
 my $genome_lib_dir;
 my $min_FFPM;
+my $custom_exclusions_str = "";
 
 &GetOptions ( 'h' => \$help_flag,
 
@@ -43,6 +45,9 @@ my $min_FFPM;
               'genome_lib_dir=s' => \$genome_lib_dir,
    
               'min_FFPM=f' => \$min_FFPM,
+
+              'custom_exclusions=s' => \$custom_exclusions_str, 
+              
     );
 
 
@@ -56,6 +61,16 @@ unless ($predictions_file && $genome_lib_dir) {
     die $usage;
 }
 
+
+my @custom_exclusions;
+
+if ($custom_exclusions_str) {
+    foreach my $custom_excl (split(",", $custom_exclusions_str)) {
+        if ($custom_excl =~ /\w/) {
+            push (@custom_exclusions, $custom_excl);
+        }
+    }
+}
 
 main: {
     
@@ -101,6 +116,21 @@ main: {
             if ($ffpm < $min_FFPM) {
                 $pred->{$fail_reason_header} = " FFPM $ffpm < min_FFPM required of $min_FFPM ";
                 $fail_writer->write_row($pred);
+                next;
+            }
+        }
+
+        if (@custom_exclusions) {
+            my $filtered = 0;
+            foreach my $custom_excl (@custom_exclusions) {
+                if ($pred->{annots} =~ /$custom_excl/) {
+                    $pred->{$fail_reason_header} = "excluded due to custom exlcusion tag match: $custom_excl";
+                    $fail_writer->write_row($pred);
+                    $filtered = 1;
+                    last;
+                }
+            }
+            if ($filtered) {
                 next;
             }
         }

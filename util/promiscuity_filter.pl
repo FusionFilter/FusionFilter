@@ -110,11 +110,17 @@ main: {
         
     while (my $row = $delim_parser->get_row()) {
         my $fusion_name = $row->{'#FusionName'};
-        my $J = ( (!defined($row->{est_J})) || $row->{est_J} eq "NA") ? $row->{JunctionReadCount} : $row->{est_J};
-        my $S = ( (!defined($row->{est_S})) || $row->{est_S} eq "NA") ? $row->{SpanningFragCount} : $row->{est_S};
+
+        my $J = 0;
+        my $S = 0;
+
+        if (defined $row->{JunctionReadCount}) { 
         
+            $J = ( (!defined($row->{est_J})) || $row->{est_J} eq "NA") ? $row->{JunctionReadCount} : $row->{est_J};
+            $S = ( (!defined($row->{est_S})) || $row->{est_S} eq "NA") ? $row->{SpanningFragCount} : $row->{est_S};
+        }
         
-        my $num_LR = $row->{num_LR} || 0;
+        my $num_LR = $row->{num_LR} || $row->{num_reads} || 0;
         
         
         if ($J !~ /\d/) { $J = 0; }

@@ -124,7 +124,7 @@ main: {
         if ( $num_LR eq "NA") { $num_LR = 0; }
 
 
-        my $junction_score_amplifier = ($row->{SPLICE_TYPE} eq "ONLY_REF_SPLICE") ? 4 : 1;
+        my $junction_score_amplifier = ($row->{SpliceType} eq "ONLY_REF_SPLICE") ? 4 : 1;
         
         my $score = $num_LR + $junction_score_amplifier*$J + $S;
         

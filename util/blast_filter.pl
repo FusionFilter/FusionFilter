@@ -122,8 +122,11 @@ main: {
         if ( $S !~ /\d/) { $S = 0; }
         
         if ( $num_LR eq "NA") { $num_LR = 0; }
+
+
+        my $junction_score_amplifier = ($row->{SPLICE_TYPE} eq "ONLY_REF_SPLICE") ? 4 : 1;
         
-        my $score = $num_LR + 4*$J + $S;
+        my $score = $num_LR + $junction_score_amplifier*$J + $S;
         
         push (@fusions, { row => $row,
                           fusion_name => $fusion_name,

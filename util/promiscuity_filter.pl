@@ -345,7 +345,8 @@ sub get_max_sum_support_fusion_partner {
     foreach my $fusion (@$fusions_aref) {
         my ($geneA, $geneB) = ($fusion->{geneA}, $fusion->{geneB});
         
-        my $sum_support = $fusion->{sum_JS} or confess "Error, no sum_JS for " . Dumper($fusion);
+        my $sum_support = $fusion->{sum_JS};
+        confess "Error, no sum_JS for " . Dumper($fusion) unless defined $sum_support;
         
         if ( (! exists $partner_to_max_support{$geneA}) || $partner_to_max_support{$geneA} < $sum_support) {
             $partner_to_max_support{$geneA} = $sum_support;
